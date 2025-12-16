@@ -1,0 +1,45 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* --- CUSTOM DARK SCROLLBAR --- */
+@layer utilities {
+  /* For Webkit browsers (Chrome, Edge, Safari) */
+  ::-webkit-scrollbar {
+    width: 8px;              /* Width of vertical scrollbar */
+    height: 8px;             /* Height of horizontal scrollbar */
+  }
+
+  ::-webkit-scrollbar-track {
+    background: #0b0c15;     /* Matches your main background */
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: #1f2937;     /* Dark gray handle */
+    border-radius: 4px;      /* Rounded corners */
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: #374151;     /* Lighter gray on hover */
+  }
+
+  /* Utility class to hide scrollbar but keep functionality */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+  }
+}
+
+/* Custom class for your lists */
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background-color: #374151; /* Slightly visible gray */
+  border-radius: 20px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}

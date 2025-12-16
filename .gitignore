@@ -1,0 +1,14 @@
+# Dependencies
+node_modules/
+.venv/
+venv/
+__pycache__/
+
+# Database (We don't upload the live data)
+*.db
+*.sqlite3
+
+# System files
+.DS_Store
+dist/
+.env
