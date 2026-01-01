@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { AreaChart, Area, XAxis, Tooltip, ResponsiveContainer, CartesianGrid, YAxis } from 'recharts'
-import { Trash2, TrendingUp, Plus, Search, Filter, Calendar as CalendarIcon, DollarSign, X, ArrowUp, ArrowDown } from 'lucide-react'
+import { Trash2, Edit2, TrendingUp, Plus, Search, Filter, Calendar as CalendarIcon, DollarSign, X, ArrowUp, ArrowDown } from 'lucide-react'
 import CustomCalendar from '../components/CustomCalendar' 
 
-const Income = ({ data, openModal, handleDelete, currency }) => { // <--- Added prop
+// ADD handleEdit to props
+const Income = ({ data, openModal, handleDelete, handleEdit, currency }) => {
   const [searchTerm, setSearchTerm] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('All')
   const [dateFilter, setDateFilter] = useState('')
@@ -113,7 +114,14 @@ const Income = ({ data, openModal, handleDelete, currency }) => { // <--- Added 
                      <div className="col-span-5 font-bold text-gray-200 truncate pr-4 flex items-center gap-2">{t.description} {t.recurrence && t.recurrence !== 'None' && (<span className="text-[8px] bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded border border-emerald-500/30">{t.recurrence}</span>)}</div>
                      <div className="col-span-3"><span className="px-2 py-1 rounded bg-gray-800 text-[10px] text-gray-300 border border-gray-700">{t.category}</span></div>
                      <div className="col-span-2 text-xs text-gray-500">{t.date || 'Today'}</div>
-                     <div className="col-span-2 text-right font-bold text-emerald-400 flex justify-end items-center gap-4">+{currency}{t.amount}<button onClick={() => handleDelete(t.id)} className="text-gray-600 hover:text-red-500 opacity-0 group-hover:opacity-100 transition"><Trash2 size={14}/></button></div>
+                     <div className="col-span-2 text-right font-bold text-emerald-400 flex justify-end items-center gap-3">
+                         +{currency}{t.amount}
+                         {/* --- EDIT AND DELETE BUTTONS --- */}
+                         <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition">
+                            <button onClick={() => handleEdit(t, 'income')} className="text-gray-500 hover:text-blue-500 transition"><Edit2 size={14}/></button>
+                            <button onClick={() => handleDelete(t.id)} className="text-gray-500 hover:text-red-500 transition"><Trash2 size={14}/></button>
+                         </div>
+                     </div>
                  </div>
              ))}
              {processedData.length === 0 && <div className="text-center py-20 text-gray-500"><Search size={48} className="mx-auto mb-4 opacity-20"/><p>No income found.</p></div>}
