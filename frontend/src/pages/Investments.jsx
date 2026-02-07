@@ -4,43 +4,45 @@ import { TrendingUp, TrendingDown, Trash2, Edit2, Plus, Briefcase, RefreshCw, La
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts'
 import { useTheme } from '../context/ThemeContext' // Import Theme Context
 
-const Investments = ({ investments, openModal, handleDelete, handleEdit, currency, exchangeRate }) => {
+const Investments = ({ investments = [], openModal, handleDelete, handleEdit, currency, exchangeRate = 1 }) => {
   const { theme, styles } = useTheme() // Get Theme State
 
   const [refreshing, setRefreshing] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
 
-  // --- LOGIC (Unchanged) ---
+  // --- LOGIC (Safe Version) ---
   const convert = (value, assetCurrency) => {
-      if (assetCurrency === 'USD') return value * exchangeRate; 
-      if (assetCurrency === 'INR') return value; 
-      return value * exchangeRate; 
+      const val = parseFloat(value || 0);
+      if (assetCurrency === 'USD') return val * (exchangeRate || 1); 
+      if (assetCurrency === 'INR') return val; 
+      return val * (exchangeRate || 1); 
   }
 
   const handleRefresh = async () => {
       setRefreshing(true)
       try {
-          const res = await axios.post('http://127.0.0.1:5000/api/investments/refresh')
+          const res = await axios.post('http://127.0.0.1:5001/api/investments/refresh')
           if(res.status === 200) window.location.reload()
       } catch (err) { alert("Failed to update prices.") } 
       finally { setRefreshing(false) }
   }
 
   const filteredInvestments = investments.filter(inv => 
-    inv.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    inv.ticker.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    inv.category.toLowerCase().includes(searchTerm.toLowerCase())
+    (inv.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (inv.ticker || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (inv.category || '').toLowerCase().includes(searchTerm.toLowerCase())
   )
 
-  const totalInvested = filteredInvestments.reduce((sum, i) => sum + (i.quantity * convert(i.buy_price, i.currency)), 0)
-  const currentValue = filteredInvestments.reduce((sum, i) => sum + (i.quantity * convert(i.current_price, i.currency)), 0)
+  const totalInvested = filteredInvestments.reduce((sum, i) => sum + (parseFloat(i.quantity || 0) * convert(i.buy_price, i.currency)), 0)
+  const currentValue = filteredInvestments.reduce((sum, i) => sum + (parseFloat(i.quantity || 0) * convert(i.current_price, i.currency)), 0)
   const profitLoss = currentValue - totalInvested
   const isProfit = profitLoss >= 0
   const roi = totalInvested > 0 ? (profitLoss / totalInvested) * 100 : 0
 
   const allocationMap = filteredInvestments.reduce((acc, item) => {
-      const val = item.quantity * convert(item.current_price, item.currency)
-      acc[item.category] = (acc[item.category] || 0) + val
+      const val = parseFloat(item.quantity || 0) * convert(item.current_price, item.currency)
+      const cat = item.category || 'Other'
+      acc[cat] = (acc[cat] || 0) + val
       return acc
   }, {})
   const data = Object.keys(allocationMap).map(key => ({ name: key, value: allocationMap[key] }))
@@ -91,7 +93,7 @@ const Investments = ({ investments, openModal, handleDelete, handleEdit, currenc
              Portfolio
            </h2>
            <p className="text-gray-400 text-sm mt-1 ml-1 tracking-wide">
-             Real-time wealth tracking <span className="text-purple-500 font-mono">@ ₹{exchangeRate.toFixed(2)}/USD</span>
+             Real-time wealth tracking <span className="text-purple-500 font-mono">@ ₹{(exchangeRate || 0).toFixed(2)}/USD</span>
            </p>
          </div>
          
@@ -180,43 +182,44 @@ const Investments = ({ investments, openModal, handleDelete, handleEdit, currenc
           
           {/* ASSET TABLE (Allowed to expand vertically) */}
           <div className={`${getCardStyle()} flex-1 !p-0`}>
-             
-             {/* TABLE HEADER */}
-             <div className={`grid grid-cols-12 gap-2 px-6 py-4 border-b text-[10px] font-black uppercase tracking-widest ${theme === 'neon' ? 'border-purple-500/30 bg-purple-900/10 text-purple-400' : 'border-white/5 bg-white/5 text-gray-500'}`}>
-                 <div className="col-span-3">Asset</div>
-                 <div className="col-span-1 text-right">Date</div>
-                 <div className="col-span-1 text-right">Qty</div>
-                 <div className="col-span-1 text-right">Avg</div>
-                 <div className="col-span-1 text-right">Current</div>
-                 <div className="col-span-1 text-right">Cost</div>
-                 <div className="col-span-1 text-right">Value</div>
-                 <div className="col-span-2 text-right">P/L</div>
-                 <div className="col-span-1 text-center">Action</div>
-             </div>
-             
-             <div className="overflow-visible">
-                 {filteredInvestments.length === 0 ? (
-                     <div className="h-64 flex flex-col items-center justify-center text-gray-500 opacity-50">
-                         <Search size={64} className="mb-4 text-purple-900"/>
-                         <p className="text-sm font-bold tracking-widest">NO ASSETS FOUND</p>
-                     </div>
-                 ) : (
-                    filteredInvestments.map(inv => {
+              
+              {/* TABLE HEADER */}
+              <div className={`grid grid-cols-12 gap-2 px-6 py-4 border-b text-[10px] font-black uppercase tracking-widest ${theme === 'neon' ? 'border-purple-500/30 bg-purple-900/10 text-purple-400' : 'border-white/5 bg-white/5 text-gray-500'}`}>
+                  <div className="col-span-3">Asset</div>
+                  <div className="col-span-1 text-right">Date</div>
+                  <div className="col-span-1 text-right">Qty</div>
+                  <div className="col-span-1 text-right">Avg</div>
+                  <div className="col-span-1 text-right">Current</div>
+                  <div className="col-span-1 text-right">Cost</div>
+                  <div className="col-span-1 text-right">Value</div>
+                  <div className="col-span-2 text-right">P/L</div>
+                  <div className="col-span-1 text-center">Action</div>
+              </div>
+              
+              <div className="overflow-visible">
+                  {filteredInvestments.length === 0 ? (
+                      <div className="h-64 flex flex-col items-center justify-center text-gray-500 opacity-50">
+                          <Search size={64} className="mb-4 text-purple-900"/>
+                          <p className="text-sm font-bold tracking-widest">NO ASSETS FOUND</p>
+                      </div>
+                  ) : (
+                     filteredInvestments.map((inv, index) => { // Added Index for fallback key
                         const displayBuyPrice = convert(inv.buy_price, inv.currency)
                         const displayCurrentPrice = convert(inv.current_price, inv.currency)
-                        const itemCost = inv.quantity * displayBuyPrice
-                        const itemValue = inv.quantity * displayCurrentPrice
+                        const itemCost = (inv.quantity || 0) * displayBuyPrice
+                        const itemValue = (inv.quantity || 0) * displayCurrentPrice
                         const itemProfit = itemValue - itemCost
                         const itemIsProfit = itemProfit >= 0
                         const itemRoi = itemCost > 0 ? (itemProfit / itemCost) * 100 : 0
                         
                         return (
-                         <div key={inv.id} className={`grid grid-cols-12 gap-2 px-6 py-4 items-center border-b transition group text-sm ${theme === 'neon' ? 'border-purple-500/10 hover:bg-purple-500/5' : 'border-white/5 hover:bg-white/5'}`}>
+                         // SAFE KEY: inv.id || inv._id || index
+                         <div key={inv.id || inv._id || index} className={`grid grid-cols-12 gap-2 px-6 py-4 items-center border-b transition group text-sm ${theme === 'neon' ? 'border-purple-500/10 hover:bg-purple-500/5' : 'border-white/5 hover:bg-white/5'}`}>
                              
                              {/* ASSET NAME */}
                              <div className="col-span-3 flex items-center gap-4 overflow-hidden">
                                  <div className={getBadgeColor(inv.category)}>
-                                     {inv.name.charAt(0)}
+                                     {(inv.name || '?').charAt(0)}
                                  </div>
                                  <div className="min-w-0">
                                      <h4 className={`font-bold truncate transition ${theme === 'neon' ? 'text-white group-hover:text-purple-300' : 'text-gray-200'}`} title={inv.name}>{inv.name}</h4>
@@ -231,7 +234,7 @@ const Investments = ({ investments, openModal, handleDelete, handleEdit, currenc
                              </div>
 
                              <div className="col-span-1 text-right font-bold text-gray-300 font-mono">
-                                 {inv.category === 'Gold' ? inv.quantity.toFixed(3) : inv.quantity.toLocaleString()}
+                                 {inv.category === 'Gold' ? (inv.quantity || 0).toFixed(3) : (inv.quantity || 0).toLocaleString()}
                              </div>
 
                              <div className="col-span-1 text-right text-gray-400 font-mono text-xs">
@@ -253,7 +256,7 @@ const Investments = ({ investments, openModal, handleDelete, handleEdit, currenc
                              <div className="col-span-2 text-right flex flex-col items-end gap-1">
                                  <div className="flex items-center gap-2">
                                      <span className={`font-black text-sm font-mono tracking-tight ${itemIsProfit ? (theme === 'neon' ? 'text-emerald-400 drop-shadow-[0_0_8px_rgba(16,185,129,0.6)]' : 'text-emerald-400') : (theme === 'neon' ? 'text-red-500 drop-shadow-[0_0_8px_rgba(239,68,68,0.6)]' : 'text-red-400')}`}>
-                                         {itemIsProfit ? '+' : ''}{currency}{Math.abs(itemProfit).toLocaleString(undefined, {maximumFractionDigits: 0})}
+                                             {itemIsProfit ? '+' : ''}{currency}{Math.abs(itemProfit).toLocaleString(undefined, {maximumFractionDigits: 0})}
                                      </span>
                                  </div>
                                  <span className={`text-[10px] font-bold px-1.5 rounded border ${itemIsProfit ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' : 'bg-red-500/10 border-red-500/30 text-red-400'}`}>
@@ -263,9 +266,9 @@ const Investments = ({ investments, openModal, handleDelete, handleEdit, currenc
 
                              <div className="col-span-1 flex justify-center gap-2 opacity-50 group-hover:opacity-100 transition">
                                  <button onClick={() => handleEdit(inv, 'investment')} className={`p-1.5 border rounded-lg transition ${theme === 'neon' ? 'border-blue-500/30 text-blue-400 hover:bg-blue-500 hover:text-black hover:shadow-[0_0_10px_#3b82f6]' : 'border-white/10 text-gray-400 hover:text-white'}`}><Edit2 size={14}/></button>
-                                 <button onClick={() => handleDelete(inv.id, 'investment')} className={`p-1.5 border rounded-lg transition ${theme === 'neon' ? 'border-red-500/30 text-red-400 hover:bg-red-500 hover:text-black hover:shadow-[0_0_10px_#ef4444]' : 'border-white/10 text-gray-400 hover:text-red-400'}`}><Trash2 size={14}/></button>
+                                 <button onClick={() => handleDelete(inv.id || inv._id, 'investment')} className={`p-1.5 border rounded-lg transition ${theme === 'neon' ? 'border-red-500/30 text-red-400 hover:bg-red-500 hover:text-black hover:shadow-[0_0_10px_#ef4444]' : 'border-white/10 text-gray-400 hover:text-red-400'}`}><Trash2 size={14}/></button>
                              </div>
-                         </div>
+                          </div>
                         )
                     })
                  )}
@@ -274,54 +277,54 @@ const Investments = ({ investments, openModal, handleDelete, handleEdit, currenc
 
           {/* ALLOCATION CHART (Right Side) */}
           <div className={`${getCardStyle()} w-80 shrink-0`}>
-             <h3 className="font-bold text-white mb-6 text-center text-sm uppercase tracking-widest">Allocation</h3>
-             <div className="flex-1 w-full min-h-[300px] relative">
-                <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                        <Pie 
-                            data={data} 
-                            innerRadius={65} 
-                            outerRadius={85} 
-                            paddingAngle={5} 
-                            dataKey="value" 
-                            stroke="none"
-                        >
-                            {data.map((_, index) => (
-                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} className={theme === 'neon' ? 'drop-shadow-[0_0_5px_rgba(0,0,0,0.8)]' : ''} />
-                            ))}
-                        </Pie>
-                        <Tooltip 
-                            formatter={(value) => `${currency}${value.toFixed(0)}`} 
-                            contentStyle={{ 
-                                backgroundColor: theme === 'neon' ? '#000' : '#1a1b26', 
-                                borderRadius: '12px', 
-                                border: theme === 'neon' ? '1px solid rgba(168,85,247,0.5)' : '1px solid #333', 
-                                boxShadow: theme === 'neon' ? '0 0 20px rgba(168,85,247,0.3)' : '0 10px 15px -3px rgba(0,0,0,0.1)' 
-                            }} 
-                            itemStyle={{ color: '#fff', fontWeight: 'bold' }}
-                        />
-                    </PieChart>
-                </ResponsiveContainer>
-                
-                <div className="absolute inset-0 flex items-center justify-center pointer-events-none pb-4">
-                    <div className="text-center">
-                        <p className={`text-[10px] font-bold uppercase tracking-widest ${theme === 'neon' ? 'text-purple-500 drop-shadow-[0_0_5px_#a855f7]' : 'text-gray-500'}`}>Total</p>
-                        <p className={`text-white font-black text-sm ${theme === 'neon' ? 'drop-shadow-[0_0_5px_white]' : ''}`}>{currency}{currentValue.toLocaleString(undefined, {maximumFractionDigits: 0})}</p>
-                    </div>
-                </div>
-             </div>
-
-             <div className="mt-4 space-y-3">
-                 {data.map((entry, index) => (
-                     <div key={index} className="flex justify-between items-center text-xs group">
-                         <div className="flex items-center gap-3">
-                             <div className={`w-2 h-2 rounded-full ${theme === 'neon' ? 'shadow-[0_0_8px_currentColor]' : ''}`} style={{backgroundColor: COLORS[index % COLORS.length], color: COLORS[index % COLORS.length]}}></div>
-                             <span className="text-gray-400 font-bold group-hover:text-white transition">{entry.name}</span>
-                         </div>
-                         <span className={`text-white font-mono font-bold ${theme === 'neon' ? 'drop-shadow-[0_0_5px_rgba(255,255,255,0.3)]' : ''}`}>{((entry.value / currentValue) * 100).toFixed(0)}%</span>
+              <h3 className="font-bold text-white mb-6 text-center text-sm uppercase tracking-widest">Allocation</h3>
+              <div className="flex-1 w-full min-h-[300px] relative">
+                 <ResponsiveContainer width="100%" height="100%">
+                     <PieChart>
+                         <Pie 
+                             data={data} 
+                             innerRadius={65} 
+                             outerRadius={85} 
+                             paddingAngle={5} 
+                             dataKey="value" 
+                             stroke="none"
+                         >
+                             {data.map((_, index) => (
+                                 <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} className={theme === 'neon' ? 'drop-shadow-[0_0_5px_rgba(0,0,0,0.8)]' : ''} />
+                             ))}
+                         </Pie>
+                         <Tooltip 
+                             formatter={(value) => `${currency}${value.toFixed(0)}`} 
+                             contentStyle={{ 
+                                 backgroundColor: theme === 'neon' ? '#000' : '#1a1b26', 
+                                 borderRadius: '12px', 
+                                 border: theme === 'neon' ? '1px solid rgba(168,85,247,0.5)' : '1px solid #333', 
+                                 boxShadow: theme === 'neon' ? '0 0 20px rgba(168,85,247,0.3)' : '0 10px 15px -3px rgba(0,0,0,0.1)' 
+                             }} 
+                             itemStyle={{ color: '#fff', fontWeight: 'bold' }}
+                         />
+                     </PieChart>
+                 </ResponsiveContainer>
+                 
+                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none pb-4">
+                     <div className="text-center">
+                         <p className={`text-[10px] font-bold uppercase tracking-widest ${theme === 'neon' ? 'text-purple-500 drop-shadow-[0_0_5px_#a855f7]' : 'text-gray-500'}`}>Total</p>
+                         <p className={`text-white font-black text-sm ${theme === 'neon' ? 'drop-shadow-[0_0_5px_white]' : ''}`}>{currency}{currentValue.toLocaleString(undefined, {maximumFractionDigits: 0})}</p>
                      </div>
-                 ))}
-             </div>
+                 </div>
+              </div>
+
+              <div className="mt-4 space-y-3">
+                  {data.map((entry, index) => (
+                      <div key={index} className="flex justify-between items-center text-xs group">
+                          <div className="flex items-center gap-3">
+                              <div className={`w-2 h-2 rounded-full ${theme === 'neon' ? 'shadow-[0_0_8px_currentColor]' : ''}`} style={{backgroundColor: COLORS[index % COLORS.length], color: COLORS[index % COLORS.length]}}></div>
+                              <span className="text-gray-400 font-bold group-hover:text-white transition">{entry.name}</span>
+                          </div>
+                          <span className={`text-white font-mono font-bold ${theme === 'neon' ? 'drop-shadow-[0_0_5px_rgba(255,255,255,0.3)]' : ''}`}>{currentValue > 0 ? ((entry.value / currentValue) * 100).toFixed(0) : 0}%</span>
+                      </div>
+                  ))}
+              </div>
           </div>
       </div>
       </div>

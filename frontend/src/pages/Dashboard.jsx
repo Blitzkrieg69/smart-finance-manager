@@ -15,14 +15,14 @@ const Dashboard = ({ transactions, budgets, openModal, currency }) => {
 
   const performanceData = transactions.slice(-7).map((t, i) => ({
     name: t.date || `Tx ${i + 1}`,
-    income: t.type === 'income' ? parseFloat(t.amount) : 0,
-    expense: t.type === 'expense' ? parseFloat(t.amount) : 0
+    income: t.type === 'income' ? parseFloat(t.amount || 0) : 0,
+    expense: t.type === 'expense' ? parseFloat(t.amount || 0) : 0
   }))
 
   const expensePieData = expenses.reduce((acc, item) => {
     const found = acc.find(x => x.name === item.category)
-    if (found) found.value += parseFloat(item.amount)
-    else acc.push({ name: item.category, value: parseFloat(item.amount) })
+    if (found) found.value += parseFloat(item.amount || 0)
+    else acc.push({ name: item.category, value: parseFloat(item.amount || 0) })
     return acc
   }, [])
 
@@ -188,20 +188,21 @@ const Dashboard = ({ transactions, budgets, openModal, currency }) => {
                </button>
              </div>
              <div className="flex-1 overflow-y-auto pr-2 space-y-3 custom-scrollbar">
-                {transactions.slice(-10).reverse().map(t => (
-                  <div key={t.id} className={`flex justify-between items-center p-3 rounded-xl transition border border-transparent group ${theme === 'neon' ? 'hover:bg-white/5 hover:border-blue-500/30' : 'hover:bg-white/5 hover:border-white/10'}`}>
-                     <div className="flex items-center gap-4">
-                       <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${t.type === 'income' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-red-500/10 text-red-500'} ${theme === 'neon' ? 'shadow-[0_0_10px_rgba(0,0,0,0.5)]' : ''}`}>
-                         {t.type === 'income' ? <ArrowUpRight size={16}/> : <ArrowDownRight size={16}/>}
-                       </div>
-                       <div>
+                {/* CHANGED TO SLICE(-5) FOR LIMIT OF 5 */}
+                {transactions.slice(-5).reverse().map((t, index) => ( 
+                  <div key={t.id || t._id || index} className={`flex justify-between items-center p-3 rounded-xl transition border border-transparent group ${theme === 'neon' ? 'hover:bg-white/5 hover:border-blue-500/30' : 'hover:bg-white/5 hover:border-white/10'}`}>
+                      <div className="flex items-center gap-4">
+                        <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${t.type === 'income' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-red-500/10 text-red-500'} ${theme === 'neon' ? 'shadow-[0_0_10px_rgba(0,0,0,0.5)]' : ''}`}>
+                          {t.type === 'income' ? <ArrowUpRight size={16}/> : <ArrowDownRight size={16}/>}
+                        </div>
+                        <div>
                            <p className={`font-bold text-xs group-hover:text-white transition uppercase tracking-wide ${theme === 'neon' ? 'text-gray-200' : 'text-gray-300'}`}>{t.category}</p>
                            <p className="text-[10px] text-gray-500">{t.description || '-'}</p>
-                       </div>
-                     </div>
-                     <span className={`font-bold text-sm ${t.type === 'income' ? (theme === 'neon' ? 'text-emerald-400 drop-shadow-[0_0_5px_#10b981]' : 'text-emerald-400') : 'text-white'}`}>
-                        {t.type === 'income' ? '+' : '-'}{currency}{Math.abs(parseFloat(t.amount)).toFixed(2)}
-                     </span>
+                        </div>
+                      </div>
+                      <span className={`font-bold text-sm ${t.type === 'income' ? (theme === 'neon' ? 'text-emerald-400 drop-shadow-[0_0_5px_#10b981]' : 'text-emerald-400') : 'text-white'}`}>
+                        {t.type === 'income' ? '+' : '-'}{currency}{Math.abs(parseFloat(t.amount || 0)).toFixed(2)}
+                      </span>
                   </div>
                 ))}
              </div>
@@ -211,16 +212,20 @@ const Dashboard = ({ transactions, budgets, openModal, currency }) => {
           <div className={getCardStyle('blue')}>
              <h3 className="font-bold text-sm text-white mb-4 tracking-widest uppercase">Budget Health</h3>
              <div className="flex-1 overflow-y-auto pr-2 space-y-5 custom-scrollbar">
-                {budgets.map(b => {
-                  const spent = expenses.filter(e => e.category === b.category).reduce((sum, e) => sum + parseFloat(e.amount), 0)
-                  const percent = Math.min((spent / b.limit) * 100, 100)
+                {budgets.map((b, index) => { 
+                  const spent = expenses
+                    .filter(e => e.category === b.category)
+                    .reduce((sum, e) => sum + parseFloat(e.amount || 0), 0)
+                  
+                  const limit = parseFloat(b.limit || 1)
+                  const percent = Math.min((spent / limit) * 100, 100)
                   
                   let color = percent >= 100 ? "bg-red-500" : percent > 80 ? "bg-yellow-500" : "bg-blue-500"
                   let shadowColor = percent >= 100 ? "#ef4444" : percent > 80 ? "#f59e0b" : "#3b82f6"
                   let textColor = percent >= 100 ? "text-red-400" : percent > 80 ? "text-yellow-400" : "text-blue-400"
                   
                   return (
-                    <div key={b.id}>
+                    <div key={b.id || b._id || index}>
                       <div className="flex justify-between text-[11px] mb-1.5">
                         <span className="text-gray-300 font-bold uppercase tracking-wider">{b.category}</span>
                         <span className={`font-bold ${textColor} ${theme === 'neon' ? `drop-shadow-[0_0_5px_${shadowColor}]` : ''}`}>{currency}{spent.toFixed(0)} / {currency}{b.limit}</span>

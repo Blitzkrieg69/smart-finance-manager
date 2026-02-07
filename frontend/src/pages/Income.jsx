@@ -4,7 +4,7 @@ import { Trash2, Edit2, TrendingUp, Plus, Search, Filter, Calendar as CalendarIc
 import CustomCalendar from '../components/CustomCalendar' 
 import { useTheme } from '../context/ThemeContext'
 
-const Income = ({ data, openModal, handleDelete, handleEdit, currency }) => {
+const Income = ({ data = [], openModal, handleDelete, handleEdit, currency }) => {
   const { theme, styles } = useTheme()
 
   const [searchTerm, setSearchTerm] = useState('')
@@ -14,12 +14,13 @@ const Income = ({ data, openModal, handleDelete, handleEdit, currency }) => {
   const [sortConfig, setSortConfig] = useState({ key: 'date', direction: 'desc' })
   const [chartPeriod, setChartPeriod] = useState('Monthly') 
 
-  const total = data.reduce((sum, t) => sum + parseFloat(t.amount), 0)
+  // SAFE TOTAL CALCULATION
+  const total = data.reduce((sum, t) => sum + parseFloat(t.amount || 0), 0)
   
   const sourceStats = data.reduce((acc, item) => {
     const found = acc.find(x => x.name === item.category)
-    if (found) found.value += parseFloat(item.amount)
-    else acc.push({ name: item.category, value: parseFloat(item.amount) })
+    if (found) found.value += parseFloat(item.amount || 0)
+    else acc.push({ name: item.category, value: parseFloat(item.amount || 0) })
     return acc
   }, []).sort((a, b) => b.value - a.value)
 
@@ -37,15 +38,21 @@ const Income = ({ data, openModal, handleDelete, handleEdit, currency }) => {
         }
         return weeks.map(w => {
             const amount = data.reduce((sum, t) => {
+                if(!t.date) return sum;
                 const tParts = t.date.split('-'); const tDate = new Date(tParts[0], tParts[1] - 1, tParts[2]) 
-                return (tDate >= w.start && tDate <= w.end) ? sum + parseFloat(t.amount) : sum
+                return (tDate >= w.start && tDate <= w.end) ? sum + parseFloat(t.amount || 0) : sum
             }, 0)
             return { name: w.label, amount }
         })
     }
     if (chartPeriod === 'Yearly') {
         const years = {}
-        data.forEach(t => { const year = t.date.split('-')[0]; years[year] = (years[year] || 0) + parseFloat(t.amount) })
+        data.forEach(t => { 
+            if(t.date) {
+                const year = t.date.split('-')[0]; 
+                years[year] = (years[year] || 0) + parseFloat(t.amount || 0) 
+            }
+        })
         if (Object.keys(years).length === 0) years[now.getFullYear()] = 0
         return Object.keys(years).sort().map(year => ({ name: year, amount: years[year] }))
     }
@@ -55,14 +62,16 @@ const Income = ({ data, openModal, handleDelete, handleEdit, currency }) => {
         months.push({ key: d.toISOString().slice(0, 7), label: d.toLocaleDateString('en-US', { month: 'short' }) })
     }
     return months.map(m => {
-        const monthSum = data.filter(t => t.date && t.date.startsWith(m.key)).reduce((sum, t) => sum + parseFloat(t.amount), 0)
+        const monthSum = data.filter(t => t.date && t.date.startsWith(m.key)).reduce((sum, t) => sum + parseFloat(t.amount || 0), 0)
         return { name: m.label, amount: monthSum }
     })
   }
   const chartData = getChartData()
 
   let processedData = data.filter(t => {
-    const matchesSearch = t.description.toLowerCase().includes(searchTerm.toLowerCase()) || t.category.toLowerCase().includes(searchTerm.toLowerCase())
+    const desc = t.description || '';
+    const cat = t.category || '';
+    const matchesSearch = desc.toLowerCase().includes(searchTerm.toLowerCase()) || cat.toLowerCase().includes(searchTerm.toLowerCase())
     const matchesCategory = categoryFilter === 'All' || t.category === categoryFilter
     const matchesDate = !dateFilter || t.date === dateFilter 
     return matchesSearch && matchesCategory && matchesDate
@@ -70,7 +79,7 @@ const Income = ({ data, openModal, handleDelete, handleEdit, currency }) => {
 
   processedData.sort((a, b) => {
     if (sortConfig.key === 'date') return sortConfig.direction === 'asc' ? new Date(a.date) - new Date(b.date) : new Date(b.date) - new Date(a.date)
-    if (sortConfig.key === 'amount') return sortConfig.direction === 'asc' ? parseFloat(a.amount) - parseFloat(b.amount) : parseFloat(b.amount) - parseFloat(a.amount)
+    if (sortConfig.key === 'amount') return sortConfig.direction === 'asc' ? parseFloat(a.amount || 0) - parseFloat(b.amount || 0) : parseFloat(b.amount || 0) - parseFloat(a.amount || 0)
     return 0
   })
 
@@ -208,8 +217,9 @@ const Income = ({ data, openModal, handleDelete, handleEdit, currency }) => {
          </div>
 
          <div className="overflow-visible">
-             {processedData.map(t => (
-                 <div key={t.id} className={`grid grid-cols-12 px-6 py-4 border-b transition items-center group ${theme === 'neon' ? 'border-emerald-500/10 hover:bg-emerald-500/5' : 'border-white/5 hover:bg-white/5'}`}>
+             {processedData.map((t, index) => (
+                 // SAFE KEY: t.id || t._id || index
+                 <div key={t.id || t._id || index} className={`grid grid-cols-12 px-6 py-4 border-b transition items-center group ${theme === 'neon' ? 'border-emerald-500/10 hover:bg-emerald-500/5' : 'border-white/5 hover:bg-white/5'}`}>
                      <div className="col-span-5 font-bold text-gray-200 truncate pr-4 flex items-center gap-3 text-sm">
                         {t.description} 
                         {t.recurrence && t.recurrence !== 'None' && (<span className={`text-[9px] px-2 py-0.5 rounded border tracking-wider ${theme === 'neon' ? 'bg-black text-emerald-400 border-emerald-500/50 shadow-[0_0_10px_rgba(16,185,129,0.3)]' : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'}`}>{t.recurrence}</span>)}
@@ -219,10 +229,10 @@ const Income = ({ data, openModal, handleDelete, handleEdit, currency }) => {
                      </div>
                      <div className={`col-span-2 text-xs font-mono transition ${theme === 'neon' ? 'text-gray-500 group-hover:text-emerald-300' : 'text-gray-500'}`}>{t.date || 'Today'}</div>
                      <div className={`col-span-2 text-right font-bold text-emerald-400 flex justify-end items-center gap-3 text-sm ${theme === 'neon' ? 'drop-shadow-[0_0_5px_rgba(16,185,129,0.6)]' : ''}`}>
-                         +{currency}{parseFloat(t.amount).toFixed(2)}
+                         +{currency}{parseFloat(t.amount || 0).toFixed(2)}
                          <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-all translate-x-2 group-hover:translate-x-0">
                             <button onClick={() => handleEdit(t, 'income')} className={`p-1.5 rounded-lg transition ${theme === 'neon' ? 'bg-black border border-emerald-500/30 text-emerald-500 hover:bg-emerald-500 hover:text-black shadow-[0_0_10px_rgba(16,185,129,0.3)]' : 'bg-white/10 text-gray-400 hover:text-white'}`}><Edit2 size={14}/></button>
-                            <button onClick={() => handleDelete(t.id)} className={`p-1.5 rounded-lg transition ${theme === 'neon' ? 'bg-black border border-red-500/30 text-red-500 hover:bg-red-500 hover:text-black shadow-[0_0_10px_rgba(239,68,68,0.3)]' : 'bg-white/10 text-gray-400 hover:text-red-500'}`}><Trash2 size={14}/></button>
+                            <button onClick={() => handleDelete(t.id || t._id)} className={`p-1.5 rounded-lg transition ${theme === 'neon' ? 'bg-black border border-red-500/30 text-red-500 hover:bg-red-500 hover:text-black shadow-[0_0_10px_rgba(239,68,68,0.3)]' : 'bg-white/10 text-gray-400 hover:text-red-500'}`}><Trash2 size={14}/></button>
                          </div>
                      </div>
                  </div>

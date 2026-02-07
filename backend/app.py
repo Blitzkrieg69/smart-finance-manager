@@ -51,7 +51,7 @@ class Investment(db.Model):
     currency = db.Column(db.String(10), default='USD')
     exchange = db.Column(db.String(20), default='Unknown')
 
-# --- NEW: GOAL MODEL (This was missing!) ---
+# --- NEW: GOAL MODEL ---
 class Goal(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
@@ -74,7 +74,7 @@ def get_usd_to_inr():
 
 # --- ROUTES ---
 
-# 1. GOALS (This was missing!)
+# 1. GOALS
 @app.route('/api/goals', methods=['GET'])
 def get_goals():
     goals = Goal.query.all()
