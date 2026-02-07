@@ -2,12 +2,16 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App.jsx'
 import './index.css'
-import { BrowserRouter } from 'react-router-dom' // <--- 1. Import this
+import { BrowserRouter } from 'react-router-dom'
+import { ThemeProvider } from './context/ThemeContext'  // ADD THIS
+
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <BrowserRouter> {/* <--- 2. Wrap App with this */}
-      <App />
+    <BrowserRouter>
+      <ThemeProvider>  {/* ADD THIS */}
+        <App />
+      </ThemeProvider>  {/* ADD THIS */}
     </BrowserRouter>
   </React.StrictMode>,
 )

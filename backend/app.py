@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, request, send_file
+from flask import Flask, jsonify, request, send_file, session
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
 import os
@@ -12,18 +12,44 @@ from sklearn.pipeline import make_pipeline
 from sklearn.linear_model import LinearRegression
 import numpy as np
 from datetime import datetime, timedelta
+from werkzeug.security import generate_password_hash, check_password_hash
+import secrets
 
 app = Flask(__name__)
-CORS(app)
+
+# --- CRITICAL CORS FIX ---
+CORS(app, 
+     supports_credentials=True,
+     origins=['http://localhost:5173'],
+     allow_headers=['Content-Type', 'Authorization'],
+     expose_headers=['Content-Type'],
+     methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'])
 
 # --- CONFIG ---
 basedir = os.path.abspath(os.path.dirname(__file__))
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'finance.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['SECRET_KEY'] = secrets.token_hex(16)
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+app.config['SESSION_COOKIE_SECURE'] = False
+app.config['SESSION_COOKIE_HTTPONLY'] = True
 
 db = SQLAlchemy(app)
 
 # --- MODELS ---
+class User(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    email = db.Column(db.String(120), unique=True, nullable=False)
+    password_hash = db.Column(db.String(200), nullable=False)
+    name = db.Column(db.String(100), nullable=False)
+    created_at = db.Column(db.String(20), default=datetime.now().strftime('%Y-%m-%d'))
+
+    def set_password(self, password):
+        self.password_hash = generate_password_hash(password)
+    
+    def check_password(self, password):
+        return check_password_hash(self.password_hash, password)
+
 class Transaction(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     amount = db.Column(db.Float, nullable=False)
@@ -51,17 +77,24 @@ class Investment(db.Model):
     currency = db.Column(db.String(10), default='USD')
     exchange = db.Column(db.String(20), default='Unknown')
 
-# --- NEW: GOAL MODEL ---
 class Goal(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     target_amount = db.Column(db.Float, nullable=False)
     saved_amount = db.Column(db.Float, default=0.0)
-    deadline = db.Column(db.String(20), nullable=False) # Format: YYYY-MM-DD
-    color = db.Column(db.String(20), default='#6366f1') # Hex Color
+    deadline = db.Column(db.String(20), nullable=False)
+    color = db.Column(db.String(20), default='#6366f1')
 
 with app.app_context():
     db.create_all()
+    
+    # Create default test user
+    if not User.query.filter_by(email='test@test.com').first():
+        default_user = User(email='test@test.com', name='Test User')
+        default_user.set_password('password')
+        db.session.add(default_user)
+        db.session.commit()
+        print("✅ Default user created: test@test.com / password")
 
 # --- HELPER: CURRENCY ---
 def get_usd_to_inr():
@@ -72,9 +105,101 @@ def get_usd_to_inr():
     except: pass
     return 84.0
 
-# --- ROUTES ---
+# --- AUTHENTICATION ROUTES ---
+@app.route('/api/auth/register', methods=['POST'])
+def register():
+    try:
+        data = request.json
+        email = data.get('email', '').strip()
+        password = data.get('password', '')
+        name = data.get('name', '').strip()
 
-# 1. GOALS
+        if not email or not password or not name:
+            return jsonify({'error': 'All fields are required'}), 400
+        
+        if len(password) < 6:
+            return jsonify({'error': 'Password must be at least 6 characters'}), 400
+
+        existing_user = User.query.filter_by(email=email).first()
+        if existing_user:
+            return jsonify({'error': 'Email already registered'}), 400
+
+        new_user = User(email=email, name=name)
+        new_user.set_password(password)
+        
+        db.session.add(new_user)
+        db.session.commit()
+
+        session['user_id'] = new_user.id
+        session['user_email'] = new_user.email
+        session['user_name'] = new_user.name
+
+        return jsonify({
+            'message': 'Registration successful',
+            'user': {
+                'id': new_user.id,
+                'email': new_user.email,
+                'name': new_user.name
+            }
+        }), 201
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/auth/login', methods=['POST'])
+def login():
+    try:
+        data = request.json
+        email = data.get('email', '').strip()
+        password = data.get('password', '')
+
+        if not email or not password:
+            return jsonify({'error': 'Email and password are required'}), 400
+
+        user = User.query.filter_by(email=email).first()
+        
+        if not user or not user.check_password(password):
+            return jsonify({'error': 'Invalid email or password'}), 401
+
+        session['user_id'] = user.id
+        session['user_email'] = user.email
+        session['user_name'] = user.name
+
+        return jsonify({
+            'message': 'Login successful',
+            'user': {
+                'id': user.id,
+                'email': user.email,
+                'name': user.name
+            }
+        }), 200
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/auth/logout', methods=['POST'])
+def logout():
+    session.clear()
+    return jsonify({'message': 'Logout successful'}), 200
+
+
+@app.route('/api/auth/check', methods=['GET'])
+def check_auth():
+    if 'user_id' in session:
+        return jsonify({
+            'authenticated': True,
+            'user': {
+                'id': session['user_id'],
+                'email': session['user_email'],
+                'name': session['user_name']
+            }
+        }), 200
+    return jsonify({'authenticated': False}), 401
+
+# --- GOALS ROUTES ---
 @app.route('/api/goals', methods=['GET'])
 def get_goals():
     goals = Goal.query.all()
@@ -117,7 +242,7 @@ def delete_goal(id):
     if goal: db.session.delete(goal); db.session.commit(); return jsonify({'message': 'Deleted'})
     return jsonify({'error': 'Not found'}), 404
 
-# 2. INVESTMENTS
+# --- INVESTMENTS ROUTES ---
 @app.route('/api/investments', methods=['GET'])
 def get_investments():
     invs = Investment.query.all()
@@ -187,7 +312,7 @@ def refresh_prices():
         except: continue
     db.session.commit(); return jsonify({'message': f'Updated {updated_count} assets'}), 200
 
-# 3. SEARCH
+# --- SEARCH ROUTE ---
 @app.route('/api/search', methods=['GET'])
 def search_assets():
     query = request.args.get('q', '')
@@ -207,39 +332,46 @@ def search_assets():
         return jsonify(clean_results)
     except: return jsonify([])
 
-# 4. TRANSACTIONS & BUDGETS
+# --- TRANSACTIONS & BUDGETS ROUTES ---
 @app.route('/api/transactions', methods=['GET'])
 def get_transactions():
     txns = Transaction.query.all()
     return jsonify([{ 'id': t.id, 'amount': t.amount, 'category': t.category, 'description': t.description, 'type': t.type, 'date': t.date, 'recurrence': t.recurrence } for t in txns])
+
 @app.route('/api/transactions', methods=['POST'])
 def add_transaction():
     data = request.json; new_txn = Transaction(amount=data['amount'], category=data['category'], description=data.get('description', ''), type=data['type'], date=data.get('date', '2025-01-01'), recurrence=data.get('recurrence', 'None'))
     db.session.add(new_txn); db.session.commit(); return jsonify({'message': 'Added!'}), 201
+
 @app.route('/api/transactions/<int:id>', methods=['PUT'])
 def update_transaction(id):
     data = request.json; txn = Transaction.query.get(id); 
     if not txn: return jsonify({'error': 'Not found'}), 404
     txn.amount = data['amount']; txn.category = data['category']; txn.description = data.get('description', ''); txn.date = data.get('date', txn.date); db.session.commit(); return jsonify({'message': 'Updated'})
+
 @app.route('/api/transactions/<int:id>', methods=['DELETE'])
 def delete_transaction(id):
     txn = Transaction.query.get(id); 
     if txn: db.session.delete(txn); db.session.commit(); return jsonify({'message': 'Deleted'}); 
     return jsonify({'error': 'Not found'}), 404
+
 @app.route('/api/budgets', methods=['GET'])
 def get_budgets():
     budgets = Budget.query.all(); return jsonify([{'id': b.id, 'category': b.category, 'limit': b.limit, 'period': b.period} for b in budgets])
+
 @app.route('/api/budgets', methods=['POST'])
 def set_budget():
     data = request.json; budget = Budget.query.filter_by(category=data['category']).first()
     if budget: budget.limit = data['limit']; budget.period = data.get('period', 'Monthly')
     else: db.session.add(Budget(category=data['category'], limit=data['limit'], period=data.get('period', 'Monthly')))
     db.session.commit(); return jsonify({'message': 'Saved!'}), 201
+
 @app.route('/api/budgets/<int:id>', methods=['DELETE'])
 def delete_budget(id):
     budget = Budget.query.get(id); 
     if budget: db.session.delete(budget); db.session.commit(); return jsonify({'message': 'Deleted'}); 
     return jsonify({'error': 'Not found'}), 404
+
 @app.route('/api/export', methods=['POST'])
 def export_data():
     try:
@@ -251,8 +383,9 @@ def export_data():
         df = pd.DataFrame(txn_list); output = io.BytesIO(); df.to_csv(output, index=False); output.seek(0)
         return send_file(output, mimetype='text/csv', as_attachment=True, download_name='report.csv')
     except Exception as e: return jsonify({'error': str(e)}), 500
+
 @app.route('/api/predict', methods=['POST'])
 def predict(): return jsonify({'category': 'Other'}) 
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    app.run(debug=True, port=5001)
