@@ -1,19 +1,23 @@
 import { useState, useEffect } from 'react'
 import axios from 'axios'
-import { Save, Target, Calendar as CalendarIcon, DollarSign } from 'lucide-react'
-import ModalWrapper from './ModalWrapper'
+import { Save, Target, Calendar as CalendarIcon, X } from 'lucide-react'
 import CustomCalendar from '../CustomCalendar'
 import { useTheme } from '../../context/ThemeContext'
 
-// Central API URL
+
 const API_URL = 'http://127.0.0.1:5001/api';
+
 
 const GoalModal = ({ isOpen, onClose, initialData, onSuccess }) => {
   const { theme } = useTheme()
   const [activeCalendar, setActiveCalendar] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [displayTarget, setDisplayTarget] = useState('')
+  const [displaySaved, setDisplaySaved] = useState('')
+
 
   const getToday = () => new Date().toISOString().split('T')[0]
+
 
   const [form, setForm] = useState({
     id: null,
@@ -24,20 +28,23 @@ const GoalModal = ({ isOpen, onClose, initialData, onSuccess }) => {
     color: '#ec4899' 
   })
 
-  // Load Data for Editing
+
   useEffect(() => {
     if (isOpen) {
         if (initialData) {
+            const target = initialData.target_amount || '';
+            const saved = initialData.saved_amount || '';
             setForm({
                 id: initialData.id || initialData._id,
                 name: initialData.name || '',
-                target_amount: initialData.target_amount || '',
-                saved_amount: initialData.saved_amount || '',
+                target_amount: target,
+                saved_amount: saved,
                 deadline: initialData.deadline || getToday(),
                 color: initialData.color || '#ec4899'
             })
+            setDisplayTarget(target ? parseFloat(target).toLocaleString('en-IN') : '')
+            setDisplaySaved(saved ? parseFloat(saved).toLocaleString('en-IN') : '')
         } else {
-            // Reset for New Goal
             setForm({ 
                 id: null, 
                 name: '', 
@@ -46,14 +53,48 @@ const GoalModal = ({ isOpen, onClose, initialData, onSuccess }) => {
                 deadline: getToday(), 
                 color: '#ec4899' 
             })
+            setDisplayTarget('')
+            setDisplaySaved('')
         }
     }
   }, [initialData, isOpen])
+
+
+  const handleTargetChange = (e) => {
+    const value = e.target.value.replace(/,/g, '');
+    if (value === '' || /^\d*\.?\d{0,2}$/.test(value)) {
+      setForm({...form, target_amount: value})
+      if (value) {
+        const parts = value.split('.')
+        parts[0] = parseFloat(parts[0]).toLocaleString('en-IN')
+        setDisplayTarget(parts.join('.'))
+      } else {
+        setDisplayTarget('')
+      }
+    }
+  }
+
+
+  const handleSavedChange = (e) => {
+    const value = e.target.value.replace(/,/g, '');
+    if (value === '' || /^\d*\.?\d{0,2}$/.test(value)) {
+      setForm({...form, saved_amount: value})
+      if (value) {
+        const parts = value.split('.')
+        parts[0] = parseFloat(parts[0]).toLocaleString('en-IN')
+        setDisplaySaved(parts.join('.'))
+      } else {
+        setDisplaySaved('')
+      }
+    }
+  }
+
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     setLoading(true)
     const recordId = form.id; 
+
 
     try {
         if (recordId) await axios.put(`${API_URL}/goals/${recordId}`, form)
@@ -69,93 +110,150 @@ const GoalModal = ({ isOpen, onClose, initialData, onSuccess }) => {
     }
   }
 
-  // Styles
-  const inputClass = `w-full p-3 rounded-xl border outline-none transition font-bold ${
-    theme === 'neon' 
-      ? 'bg-black border-white/20 focus:border-pink-500 focus:shadow-[0_0_15px_rgba(236,72,153,0.4)] text-white' 
-      : 'bg-white/5 border-white/10 focus:bg-white/10 text-white'
-  }`
-  
-  const labelClass = "text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1 block group-focus-within:text-pink-500 transition-colors"
+
+  if (!isOpen) return null;
+
 
   return (
-    <ModalWrapper isOpen={isOpen} onClose={onClose} title={form.id ? 'Edit Goal' : 'New Goal'}>
-        <form onSubmit={handleSubmit} className="space-y-5">
-            
-            {/* ICON HEADER */}
-            <div className="flex justify-center mb-4">
-                <div className={`w-16 h-16 rounded-full flex items-center justify-center ${theme === 'neon' ? 'bg-black border border-pink-500 shadow-[0_0_20px_#ec4899]' : 'bg-white/10'}`}>
-                    <Target size={32} className="text-pink-500" />
-                </div>
-            </div>
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in p-4" onClick={onClose}>
+      <div 
+        className={`w-full max-w-md rounded-2xl border relative overflow-hidden ${theme === 'dark' ? 'bg-black border-pink-500/30 shadow-[0_0_50px_rgba(236,72,153,0.4)]' : 'bg-[#FFF8F0] border-[#654321]/30 shadow-2xl'}`}
+        onClick={(e) => e.stopPropagation()}
+      >
+        
+        {/* HEADER */}
+        <div className={`relative px-6 py-4 border-b ${theme === 'dark' ? 'bg-gradient-to-r from-pink-900/20 to-transparent border-pink-500/20' : 'bg-[#F5F5DC] border-[#C9A87C]/30'}`}>
+          
+          {/* Close Button */}
+          <button 
+            onClick={onClose} 
+            className={`absolute top-3 right-3 p-1.5 rounded-full transition ${theme === 'dark' ? 'text-gray-500 hover:text-white hover:bg-white/10' : 'text-[#654321] hover:text-[#4B3621] hover:bg-white'}`}
+          >
+            <X size={18}/>
+          </button>
 
+
+          {/* Title */}
+          <div className="flex items-center gap-3">
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center border ${theme === 'dark' ? 'bg-pink-500/10 border-pink-500/30' : 'bg-[#F5F5DC] border-[#654321]/30'}`}>
+              <Target size={20} className={theme === 'dark' ? 'text-pink-400' : 'text-[#4B3621]'} />
+            </div>
+            <div>
+              <h2 className={`text-xl font-black uppercase tracking-wide ${theme === 'dark' ? 'text-white' : 'text-[#4B3621]'}`}>
+                {form.id ? 'Edit' : 'New'} Goal
+              </h2>
+              <p className={`text-[10px] ${theme === 'dark' ? 'text-gray-400' : 'text-[#654321]/70'}`}>
+                {form.id ? 'Update dream target' : 'Set your dream target'}
+              </p>
+            </div>
+          </div>
+        </div>
+
+
+        {/* FORM */}
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+            
             {/* NAME */}
-            <div className="group">
-                <label className={labelClass}>Goal Name</label>
+            <div>
+                <label className={`text-[10px] font-bold uppercase tracking-widest mb-1.5 block ${theme === 'dark' ? 'text-gray-400' : 'text-[#654321]/70'}`}>
+                  Goal Name
+                </label>
                 <input 
                     type="text" 
-                    className={inputClass} 
+                    className={`w-full px-3 py-2.5 rounded-xl border outline-none transition font-bold text-sm ${theme === 'dark' ? 'bg-white/5 border-white/10 focus:border-pink-500/50 text-white placeholder-gray-600' : 'bg-white border-[#C9A87C]/50 focus:border-[#654321] text-[#4B3621] placeholder-[#654321]/40'}`}
                     value={form.name} 
                     onChange={e => setForm({...form, name: e.target.value})} 
-                    placeholder="e.g. Dream House, New Laptop..." 
+                    placeholder="e.g. Dream House, New Car..." 
                     required 
                     autoFocus
                 />
             </div>
 
+
             {/* AMOUNTS GRID */}
-            <div className="grid grid-cols-2 gap-4">
-                <div className="group">
-                    <label className={labelClass}>Target Amount</label>
+            <div className="grid grid-cols-2 gap-3">
+                <div>
+                    <label className={`text-[10px] font-bold uppercase tracking-widest mb-1.5 block ${theme === 'dark' ? 'text-gray-400' : 'text-[#654321]/70'}`}>
+                      Target Amount
+                    </label>
                     <div className="relative">
-                        <DollarSign size={14} className="absolute left-3 top-4 text-gray-500"/>
+                        <div className={`absolute left-3 top-1/2 -translate-y-1/2 text-sm ${theme === 'dark' ? 'text-gray-500' : 'text-[#654321]'}`}>₹</div>
                         <input 
-                            type="number" 
-                            className={`${inputClass} pl-8`} 
-                            value={form.target_amount} 
-                            onChange={e => setForm({...form, target_amount: e.target.value})} 
+                            type="text"
+                            inputMode="decimal"
+                            className={`w-full pl-8 pr-3 py-2.5 rounded-xl border outline-none transition font-bold text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none caret-transparent ${theme === 'dark' ? 'bg-white/5 border-white/10 focus:border-pink-500/50 text-white placeholder-gray-600' : 'bg-white border-[#C9A87C]/50 focus:border-[#654321] text-[#4B3621] placeholder-[#654321]/40'}`}
+                            value={displayTarget} 
+                            onChange={handleTargetChange} 
                             placeholder="0.00" 
                             required 
                         />
                     </div>
                 </div>
 
-                <div className="group">
-                    <label className={labelClass}>Saved So Far</label>
+
+                <div>
+                    <label className={`text-[10px] font-bold uppercase tracking-widest mb-1.5 block ${theme === 'dark' ? 'text-gray-400' : 'text-[#654321]/70'}`}>
+                      Saved So Far
+                    </label>
                     <div className="relative">
-                        <DollarSign size={14} className="absolute left-3 top-4 text-gray-500"/>
+                        <div className={`absolute left-3 top-1/2 -translate-y-1/2 text-sm ${theme === 'dark' ? 'text-gray-500' : 'text-[#654321]'}`}>₹</div>
                         <input 
-                            type="number" 
-                            className={`${inputClass} pl-8`} 
-                            value={form.saved_amount} 
-                            onChange={e => setForm({...form, saved_amount: e.target.value})} 
+                            type="text"
+                            inputMode="decimal"
+                            className={`w-full pl-8 pr-3 py-2.5 rounded-xl border outline-none transition font-bold text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none caret-transparent ${theme === 'dark' ? 'bg-white/5 border-white/10 focus:border-pink-500/50 text-white placeholder-gray-600' : 'bg-white border-[#C9A87C]/50 focus:border-[#654321] text-[#4B3621] placeholder-[#654321]/40'}`}
+                            value={displaySaved} 
+                            onChange={handleSavedChange} 
                             placeholder="0.00" 
                         />
                     </div>
                 </div>
             </div>
 
+
             {/* DEADLINE */}
-            <div className="relative group">
-                <label className={labelClass}>Target Date</label>
-                <button type="button" onClick={() => setActiveCalendar(!activeCalendar)} className={`w-full flex items-center gap-3 p-3 rounded-xl border text-left transition ${theme === 'neon' ? 'bg-black border-white/20 text-white' : 'bg-white/5 border-white/10 text-white'}`}>
-                    <CalendarIcon size={16} className="text-pink-500"/>
-                    <span className="font-medium text-sm">{form.deadline}</span>
+            <div className="relative">
+                <label className={`text-[10px] font-bold uppercase tracking-widest mb-1.5 block ${theme === 'dark' ? 'text-gray-400' : 'text-[#654321]/70'}`}>
+                  Target Date
+                </label>
+                <button 
+                  type="button" 
+                  onClick={(e) => { e.stopPropagation(); setActiveCalendar(!activeCalendar); }} 
+                  className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-xl border transition text-left ${theme === 'dark' ? 'bg-white/5 border-white/10 hover:border-pink-500/50 text-white' : 'bg-white border-[#C9A87C]/50 hover:border-[#654321] text-[#4B3621]'}`}
+                >
+                    <CalendarIcon size={16} className={theme === 'dark' ? 'text-pink-400' : 'text-[#654321]'}/>
+                    <span className="font-mono text-sm font-bold">{form.deadline}</span>
                 </button>
                 {activeCalendar && (
                     <div className="absolute top-full left-0 z-50 mt-2">
-                        <CustomCalendar selectedDate={form.deadline} onSelect={(date) => setForm({...form, deadline: date})} onClose={() => setActiveCalendar(false)} />
+                        <CustomCalendar 
+                          selectedDate={form.deadline} 
+                          onSelect={(date) => { setForm({...form, deadline: date}); setActiveCalendar(false); }} 
+                          onClose={() => setActiveCalendar(false)} 
+                        />
                     </div>
                 )}
             </div>
 
-            {/* SUBMIT */}
-            <button disabled={loading} className={`w-full py-4 rounded-xl font-bold flex items-center justify-center gap-2 transition-all mt-4 ${theme === 'neon' ? 'bg-pink-600 hover:bg-pink-500 text-white shadow-[0_0_20px_#ec4899]' : 'bg-pink-600 hover:bg-pink-500 text-white shadow-lg'}`}>
-                {loading ? <span className="animate-spin">⌛</span> : <><Save size={18}/> {form.id ? 'Update Goal' : 'Create Goal'}</>}
+
+            {/* SUBMIT BUTTON */}
+            <button 
+              disabled={loading} 
+              className={`w-full py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all border mt-2 ${theme === 'dark' ? 'bg-pink-600 hover:bg-pink-500 text-white shadow-[0_0_20px_rgba(236,72,153,0.4)] border-pink-400' : 'bg-[#F5F5DC] hover:bg-[#F5F5DC]/80 text-[#4B3621] border-[#654321]/30 shadow-lg'}`}
+            >
+                {loading ? (
+                  <span className="animate-spin">⌛</span>
+                ) : (
+                  <>
+                    <Save size={18}/> 
+                    {form.id ? 'Update Goal' : 'Create Goal'}
+                  </>
+                )}
             </button>
         </form>
-    </ModalWrapper>
+      </div>
+    </div>
   )
 }
+
 
 export default GoalModal
