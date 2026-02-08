@@ -93,6 +93,20 @@ const Income = ({ data = [], openModal, handleDelete, handleEdit, currency }) =>
         return `${base} shadow-xl`
     }
 
+    // --- DATE FORMATTER HELPER ---
+    const formatDate = (dateStr) => {
+        if (!dateStr) return 'Today';
+        const date = new Date(dateStr);
+        // Fallback if date is invalid
+        if (isNaN(date.getTime())) return dateStr;
+        
+        return date.toLocaleDateString('en-GB', { 
+            day: '2-digit', 
+            month: 'short', 
+            year: 'numeric' 
+        });
+    };
+
     return (
         <div className={`flex-1 h-full overflow-y-auto custom-scrollbar animate-fade-in ${styles.bg}`} onClick={() => setShowCalendar(false)}>
             <div className="p-6 flex flex-col gap-8">
@@ -209,28 +223,32 @@ const Income = ({ data = [], openModal, handleDelete, handleEdit, currency }) =>
                     </div>
 
                     <div className={`grid grid-cols-12 px-6 py-4 text-[10px] font-black uppercase tracking-widest select-none border-b ${theme === 'dark' ? 'bg-emerald-950/30 text-emerald-400 border-emerald-500/30' : 'bg-[#F5F5DC]/50 text-[#654321] border-[#C9A87C]/30'}`}>
-                        <div className="col-span-4">Description</div>
+                        <div className="col-span-5">Description</div>
                         <div className="col-span-2">Source</div>
                         <div className={`col-span-2 flex items-center cursor-pointer transition ${theme === 'dark' ? 'hover:text-white' : 'hover:text-[#4B3621]'}`} onClick={() => handleSort('date')}>Date <SortIcon active={sortConfig.key === 'date'} direction={sortConfig.direction} /></div>
-                        <div className={`col-span-2 flex items-center cursor-pointer transition ${theme === 'dark' ? 'hover:text-white' : 'hover:text-[#4B3621]'}`} onClick={() => handleSort('amount')}>Amount <SortIcon active={sortConfig.key === 'amount'} direction={sortConfig.direction} /></div>
-                        <div className="col-span-2 text-center">Actions</div>
+                        {/* RIGHT ALIGNED HEADER */}
+                        <div className={`col-span-2 flex items-center justify-end cursor-pointer transition text-right ${theme === 'dark' ? 'hover:text-white' : 'hover:text-[#4B3621]'}`} onClick={() => handleSort('amount')}>Amount <SortIcon active={sortConfig.key === 'amount'} direction={sortConfig.direction} /></div>
+                        <div className="col-span-1 text-center">Actions</div>
                     </div>
 
                     <div className="overflow-visible">
                         {processedData.map((t, index) => (
                             <div key={t.id || t._id || index} className={`grid grid-cols-12 px-6 py-4 border-b transition items-center group ${theme === 'dark' ? 'border-emerald-500/10 hover:bg-emerald-500/5' : 'border-[#C9A87C]/20 hover:bg-[#F5F5DC]/30'}`}>
-                                <div className={`col-span-4 font-bold truncate pr-4 flex items-center gap-3 text-sm ${theme === 'dark' ? 'text-gray-200' : 'text-[#4B3621]'}`}>
+                                <div className={`col-span-5 font-bold truncate pr-4 flex items-center gap-3 text-sm ${theme === 'dark' ? 'text-gray-200' : 'text-[#4B3621]'}`}>
                                     {t.description}
                                     {t.recurrence && t.recurrence !== 'None' && (<span className={`text-[9px] px-2 py-0.5 rounded border tracking-wider ${theme === 'dark' ? 'bg-black text-emerald-400 border-emerald-500/50 shadow-[0_0_10px_rgba(16,185,129,0.3)]' : 'bg-[#F5F5DC] text-[#4B3621] border-[#654321]/30'}`}>{t.recurrence}</span>)}
                                 </div>
                                 <div className="col-span-2">
                                     <span className={`px-3 py-1 rounded-lg text-[10px] font-bold border transition ${theme === 'dark' ? 'bg-black text-gray-300 border-emerald-500/30 shadow-[0_0_5px_rgba(16,185,129,0.1)] group-hover:border-emerald-500/60' : 'bg-white text-[#654321] border-[#C9A87C]/50'}`}>{t.category}</span>
                                 </div>
-                                <div className={`col-span-2 text-xs font-mono transition ${theme === 'dark' ? 'text-gray-500 group-hover:text-emerald-300' : 'text-[#654321]/70'}`}>{t.date || 'Today'}</div>
-                                <div className={`col-span-2 font-bold text-sm ${theme === 'dark' ? 'text-emerald-400 drop-shadow-[0_0_5px_rgba(16,185,129,0.6)]' : 'text-[#4B3621]'}`}>
+                                <div className={`col-span-2 text-xs font-mono transition ${theme === 'dark' ? 'text-gray-500 group-hover:text-emerald-300' : 'text-[#654321]/70'}`}>
+                                    {formatDate(t.date)}
+                                </div>
+                                {/* RIGHT ALIGNED AMOUNT */}
+                                <div className={`col-span-2 font-bold text-sm text-right ${theme === 'dark' ? 'text-emerald-400 drop-shadow-[0_0_5px_rgba(16,185,129,0.6)]' : 'text-[#4B3621]'}`}>
                                     <span className="whitespace-nowrap">+{currency}{formatIndianNumber(parseFloat(t.amount || 0))}</span>
                                 </div>
-                                <div className="col-span-2 flex justify-center gap-2">
+                                <div className="col-span-1 flex justify-center gap-2">
                                     <button onClick={() => handleEdit(t, 'income')} className={`p-1.5 rounded-lg transition border ${theme === 'dark' ? 'bg-black border-emerald-500/30 text-emerald-500 hover:bg-emerald-500 hover:text-black shadow-[0_0_10px_rgba(16,185,129,0.3)]' : 'bg-white text-[#654321] border-[#654321]/30 hover:bg-[#F5F5DC]'}`}>
                                         <Edit2 size={14} />
                                     </button>

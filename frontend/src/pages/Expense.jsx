@@ -5,10 +5,8 @@ import CustomCalendar from '../components/CustomCalendar'
 import { useTheme } from '../context/ThemeContext'
 import { formatIndianNumber } from '../utils/formatNumber'
 
-
 const Expense = ({ data = [], openModal, handleDelete, handleEdit, currency }) => {
   const { theme, styles } = useTheme()
-
 
   const [searchTerm, setSearchTerm] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('All')
@@ -16,7 +14,6 @@ const Expense = ({ data = [], openModal, handleDelete, handleEdit, currency }) =
   const [showCalendar, setShowCalendar] = useState(false)
   const [sortConfig, setSortConfig] = useState({ key: 'date', direction: 'desc' })
   const [chartPeriod, setChartPeriod] = useState('Monthly') 
-
 
   // SAFE TOTAL CALCULATION
   const total = data.reduce((sum, t) => sum + parseFloat(t.amount || 0), 0)
@@ -27,7 +24,6 @@ const Expense = ({ data = [], openModal, handleDelete, handleEdit, currency }) =
     else acc.push({ name: item.category, value: parseFloat(item.amount || 0) })
     return acc
   }, []).sort((a, b) => b.value - a.value)
-
 
   const getChartData = () => {
     const now = new Date()
@@ -73,7 +69,6 @@ const Expense = ({ data = [], openModal, handleDelete, handleEdit, currency }) =
   }
   const chartData = getChartData()
 
-
   let processedData = data.filter(t => {
     const desc = t.description || '';
     const cat = t.category || '';
@@ -83,17 +78,14 @@ const Expense = ({ data = [], openModal, handleDelete, handleEdit, currency }) =
     return matchesSearch && matchesCategory && matchesDate
   })
 
-
   processedData.sort((a, b) => {
     if (sortConfig.key === 'date') return sortConfig.direction === 'asc' ? new Date(a.date) - new Date(b.date) : new Date(b.date) - new Date(a.date)
     if (sortConfig.key === 'amount') return sortConfig.direction === 'asc' ? parseFloat(a.amount || 0) - parseFloat(b.amount || 0) : parseFloat(b.amount || 0) - parseFloat(a.amount || 0)
     return 0
   })
 
-
   const handleSort = (key) => { setSortConfig({ key, direction: sortConfig.key === key && sortConfig.direction === 'desc' ? 'asc' : 'desc' }) }
   const SortIcon = ({ active, direction }) => (!active ? <span className={`opacity-50 ml-1 ${theme === 'dark' ? 'text-gray-600' : 'text-[#654321]/50'}`}>↕</span> : direction === 'asc' ? <ArrowUp size={12} className={`ml-1 ${theme === 'dark' ? 'text-red-400' : 'text-[#4B3621]'}`}/> : <ArrowDown size={12} className={`ml-1 ${theme === 'dark' ? 'text-red-400' : 'text-[#4B3621]'}`}/>)
-
 
   const getCardStyle = (allowOverflow = false) => {
     const base = `p-6 rounded-2xl border flex flex-col relative transition-all duration-500 ${allowOverflow ? 'overflow-visible' : 'overflow-hidden'} ${styles.card}`
@@ -101,6 +93,19 @@ const Expense = ({ data = [], openModal, handleDelete, handleEdit, currency }) =
     return `${base} shadow-xl`
   }
 
+  // --- DATE FORMATTER HELPER ---
+  const formatDate = (dateStr) => {
+      if (!dateStr) return 'Today';
+      const date = new Date(dateStr);
+      // Fallback if date is invalid
+      if (isNaN(date.getTime())) return dateStr;
+      
+      return date.toLocaleDateString('en-GB', { 
+          day: '2-digit', 
+          month: 'short', 
+          year: 'numeric' 
+      });
+  };
 
   return (
     <div className={`flex-1 h-full overflow-y-auto custom-scrollbar animate-fade-in ${styles.bg}`} onClick={() => setShowCalendar(false)}>
@@ -128,7 +133,6 @@ const Expense = ({ data = [], openModal, handleDelete, handleEdit, currency }) =
             </button>
          </div>
       </div>
-
 
       {/* CHARTS ROW */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8 shrink-0 h-72">
@@ -165,7 +169,6 @@ const Expense = ({ data = [], openModal, handleDelete, handleEdit, currency }) =
             </div>
          </div>
 
-
          {/* TOP CATEGORIES */}
          <div className={getCardStyle()}>
             <h3 className={`font-bold mb-6 text-sm tracking-wide flex items-center gap-2 ${theme === 'dark' ? 'text-white' : 'text-[#4B3621]'}`}><div className={`w-2 h-2 rounded-full ${theme === 'dark' ? 'bg-red-500 shadow-[0_0_10px_#ef4444]' : 'bg-[#654321]'}`}></div>TOP CATEGORIES</h3>
@@ -188,7 +191,6 @@ const Expense = ({ data = [], openModal, handleDelete, handleEdit, currency }) =
             </div>
          </div>
       </div>
-
 
       {/* HISTORY TABLE */}
       <div className={`${getCardStyle(true)} !p-0`}>
@@ -223,33 +225,38 @@ const Expense = ({ data = [], openModal, handleDelete, handleEdit, currency }) =
             </div>
          </div>
 
-
          <div className={`grid grid-cols-12 px-6 py-4 text-[10px] font-black uppercase tracking-widest select-none border-b ${theme === 'dark' ? 'bg-red-950/30 text-red-400 border-red-500/30' : 'bg-[#F5F5DC]/50 text-[#654321] border-[#C9A87C]/30'}`}>
              <div className="col-span-5">Description</div>
-             <div className="col-span-3">Category</div>
+             <div className="col-span-2">Category</div>
              <div className={`col-span-2 flex items-center cursor-pointer transition ${theme === 'dark' ? 'hover:text-white' : 'hover:text-[#4B3621]'}`} onClick={() => handleSort('date')}>Date <SortIcon active={sortConfig.key === 'date'} direction={sortConfig.direction} /></div>
-             <div className={`col-span-2 flex items-center cursor-pointer transition ${theme === 'dark' ? 'hover:text-white' : 'hover:text-[#4B3621]'}`} onClick={() => handleSort('amount')}><span className="mr-auto pr-20">Amount</span> <SortIcon active={sortConfig.key === 'amount'} direction={sortConfig.direction} /></div>
+             <div className={`col-span-2 flex items-center justify-end cursor-pointer transition text-right ${theme === 'dark' ? 'hover:text-white' : 'hover:text-[#4B3621]'}`} onClick={() => handleSort('amount')}>Amount <SortIcon active={sortConfig.key === 'amount'} direction={sortConfig.direction} /></div>
+             <div className="col-span-1 text-center">Actions</div>
          </div>
-
 
          <div className="overflow-visible">
              {processedData.map((t, index) => (
                  <div key={t.id || t._id || index} className={`grid grid-cols-12 px-6 py-4 border-b transition items-center group ${theme === 'dark' ? 'border-red-500/10 hover:bg-red-500/5' : 'border-[#C9A87C]/20 hover:bg-[#F5F5DC]/30'}`}>
-                     <div className={`col-span-5 font-bold truncate pr-4 flex items-center gap-3 text-sm ${theme === 'dark' ? 'text-gray-200' : 'text-[#4B3621]'}`}>
+                      <div className={`col-span-5 font-bold truncate pr-4 flex items-center gap-3 text-sm ${theme === 'dark' ? 'text-gray-200' : 'text-[#4B3621]'}`}>
                         {t.description} 
                         {t.recurrence && t.recurrence !== 'None' && (<span className={`text-[9px] px-2 py-0.5 rounded border tracking-wider ${theme === 'dark' ? 'bg-black text-red-400 border-red-500/50 shadow-[0_0_10px_rgba(239,68,68,0.3)]' : 'bg-[#F5F5DC] text-[#4B3621] border-[#654321]/30'}`}>{t.recurrence}</span>)}
-                     </div>
-                     <div className="col-span-3">
+                      </div>
+                      <div className="col-span-2">
                         <span className={`px-3 py-1 rounded-lg text-[10px] font-bold border transition ${theme === 'dark' ? 'bg-black text-gray-300 border-red-500/30 shadow-[0_0_5px_rgba(239,68,68,0.1)] group-hover:border-red-500/60' : 'bg-white text-[#654321] border-[#C9A87C]/50'}`}>{t.category}</span>
-                     </div>
-                     <div className={`col-span-2 text-xs font-mono transition ${theme === 'dark' ? 'text-gray-500 group-hover:text-red-300' : 'text-[#654321]/70'}`}>{t.date || 'Today'}</div>
-                     <div className={`col-span-2 text-right font-bold flex justify-end items-center gap-3 text-sm ${theme === 'dark' ? 'text-red-400 drop-shadow-[0_0_5px_rgba(239,68,68,0.6)]' : 'text-[#4B3621]'}`}>
-                         <span className="whitespace-nowrap">-{currency}{formatIndianNumber(parseFloat(t.amount || 0))}</span>
-                         <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-all translate-x-2 group-hover:translate-x-0">
-                            <button onClick={() => handleEdit(t, 'expense')} className={`p-1.5 rounded-lg transition border ${theme === 'dark' ? 'bg-black border-red-500/30 text-red-500 hover:bg-red-500 hover:text-black shadow-[0_0_10px_rgba(239,68,68,0.3)]' : 'bg-white text-[#654321] border-[#654321]/30 hover:bg-[#F5F5DC]'}`}><Edit2 size={14}/></button>
-                            <button onClick={() => handleDelete(t.id || t._id)} className={`p-1.5 rounded-lg transition border ${theme === 'dark' ? 'bg-black border-red-500/30 text-red-500 hover:bg-red-500 hover:text-black shadow-[0_0_10px_rgba(239,68,68,0.3)]' : 'bg-white text-red-600 border-red-300 hover:bg-red-50'}`}><Trash2 size={14}/></button>
-                         </div>
-                     </div>
+                      </div>
+                      <div className={`col-span-2 text-xs font-mono transition ${theme === 'dark' ? 'text-gray-500 group-hover:text-red-300' : 'text-[#654321]/70'}`}>
+                        {formatDate(t.date)}
+                      </div>
+                      <div className={`col-span-2 font-bold text-sm text-right ${theme === 'dark' ? 'text-red-400 drop-shadow-[0_0_5px_rgba(239,68,68,0.6)]' : 'text-[#4B3621]'}`}>
+                          <span className="whitespace-nowrap">-{currency}{formatIndianNumber(parseFloat(t.amount || 0))}</span>
+                      </div>
+                      <div className="col-span-1 flex justify-center gap-2">
+                          <button onClick={() => handleEdit(t, 'expense')} className={`p-1.5 rounded-lg transition border ${theme === 'dark' ? 'bg-black border-red-500/30 text-red-500 hover:bg-red-500 hover:text-black shadow-[0_0_10px_rgba(239,68,68,0.3)]' : 'bg-white text-[#654321] border-[#654321]/30 hover:bg-[#F5F5DC]'}`}>
+                              <Edit2 size={14} />
+                          </button>
+                          <button onClick={() => handleDelete(t.id || t._id)} className={`p-1.5 rounded-lg transition border ${theme === 'dark' ? 'bg-black border-red-500/30 text-red-500 hover:bg-red-500 hover:text-black shadow-[0_0_10px_rgba(239,68,68,0.3)]' : 'bg-white text-red-600 border-red-300 hover:bg-red-50'}`}>
+                              <Trash2 size={14} />
+                          </button>
+                      </div>
                  </div>
              ))}
              {processedData.length === 0 && <div className={`text-center py-24 ${theme === 'dark' ? 'text-gray-500' : 'text-[#654321]/60'}`}><Search size={48} className="mx-auto mb-4 opacity-20"/><p className="text-sm">No expenses found.</p></div>}
@@ -259,6 +266,5 @@ const Expense = ({ data = [], openModal, handleDelete, handleEdit, currency }) =
     </div>
   )
 }
-
 
 export default Expense

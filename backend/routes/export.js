@@ -1,39 +1,46 @@
 const express = require('express');
 const router = express.Router();
 const Transaction = require('../models/Transaction');
+const { requireAuth } = require('../middleware/authMiddleware');
+const { validateExport } = require('../middleware/validation');
 
-router.post('/', async (req, res) => {
-  try {
-    const { start_date, end_date, type } = req.body;
-
-    const start = new Date(start_date);
-    const end = new Date(end_date);
-    end.setHours(23, 59, 59, 999);
-
-    let query = { date: { $gte: start, $lte: end } };
-    if (type !== 'all') query.type = type;
-
-    const transactions = await Transaction.find(query).sort({ date: -1 });
-
-    const headers = ["Date", "Title", "Amount", "Type", "Category", "Description"];
-    const rows = transactions.map(t => [
-      t.date.toISOString().split('T')[0],
-      `"${t.title.replace(/"/g, '""')}"`,
-      t.amount,
-      t.type,
-      t.category,
-      `"${(t.description || '').replace(/"/g, '""')}"`
-    ].join(','));
-
-    const csvContent = [headers.join(','), ...rows].join('\n');
-
-    res.setHeader('Content-Type', 'text/csv');
-    res.setHeader('Content-Disposition', 'attachment; filename=export.csv');
-    res.status(200).send(csvContent);
-
-  } catch (err) {
-    res.status(500).json({ message: "Export failed" });
-  }
+router.post('/', requireAuth, validateExport, async (req, res) => {
+    try {
+        const { type, start_date, end_date } = req.body;
+        const userId = req.session.userId;
+        
+        // Build Query
+        let query = { userId }; // STRICTLY SCOPED TO USER
+        
+        if (type && type !== 'all') {
+            query.type = type;
+        }
+        
+        if (start_date || end_date) {
+            query.date = {};
+            if (start_date) query.date.$gte = new Date(start_date);
+            if (end_date) query.date.$lte = new Date(end_date);
+        }
+        
+        const data = await Transaction.find(query).sort({ date: -1 });
+        
+        // Generate CSV
+        let csv = "Date,Type,Category,Description,Amount\n";
+        data.forEach(t => { 
+            // Handle commas in description to prevent broken CSVs
+            const safeDesc = (t.description || '').replace(/,/g, ' ');
+            const dateStr = t.date ? new Date(t.date).toISOString().split('T')[0] : '';
+            csv += `${dateStr},${t.type},${t.category},"${safeDesc}",${t.amount}\n`; 
+        });
+        
+        res.header('Content-Type', 'text/csv');
+        res.attachment('finance_data.csv');
+        res.send(csv);
+        
+    } catch (err) {
+        console.error("Export Error:", err);
+        res.status(500).json({ error: "Failed to generate export" });
+    }
 });
 
 module.exports = router;

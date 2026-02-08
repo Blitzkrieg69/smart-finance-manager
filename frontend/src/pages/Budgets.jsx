@@ -11,10 +11,13 @@ const Budgets = ({ budgets = [], expenses = [], openModal, handleDelete, handleE
   const currency = '₹';
 
 
-  // --- FILTER LOGIC ---
-  const filteredBudgets = periodFilter === 'All' 
-    ? budgets 
-    : budgets.filter(b => b.period === periodFilter)
+const normalizePeriod = (p) =>
+  ((p ?? 'Monthly').toString()).trim().toLowerCase()
+
+const filteredBudgets =
+  periodFilter === 'All'
+    ? budgets
+    : budgets.filter(b => normalizePeriod(b.period) === normalizePeriod(periodFilter))
 
 
   // --- SMART CALCULATIONS (TIME AWARE) ---

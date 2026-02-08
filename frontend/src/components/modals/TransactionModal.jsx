@@ -4,9 +4,8 @@ import { Save, Calendar as CalendarIcon, DollarSign, X } from 'lucide-react'
 import CustomCalendar from '../CustomCalendar'
 import { useTheme } from '../../context/ThemeContext'
 
-
-const API_URL = 'http://127.0.0.1:5000/api';
-
+// Ensure this matches your backend URL
+const API_URL = 'http://localhost:5000/api';
 
 const TransactionModal = ({ isOpen, onClose, type, initialData, onSuccess }) => {
   const { theme } = useTheme()
@@ -14,9 +13,7 @@ const TransactionModal = ({ isOpen, onClose, type, initialData, onSuccess }) => 
   const [loading, setLoading] = useState(false)
   const [displayAmount, setDisplayAmount] = useState('')
 
-
   const getToday = () => new Date().toISOString().split('T')[0]
-
 
   const [form, setForm] = useState({ 
     id: null, 
@@ -28,10 +25,8 @@ const TransactionModal = ({ isOpen, onClose, type, initialData, onSuccess }) => 
     type: type
   })
 
-
   const EXPENSE_CATEGORIES = ["Food", "Transport", "Entertainment", "Utilities", "Rent", "Health", "Shopping", "Travel", "Education", "Other"]
   const INCOME_CATEGORIES = ["Salary", "Freelance", "Investment", "Business", "Gift", "Sold Items", "Rental Income", "Other"]
-
 
   useEffect(() => {
     if (isOpen) {
@@ -60,7 +55,6 @@ const TransactionModal = ({ isOpen, onClose, type, initialData, onSuccess }) => 
     }
   }, [initialData, type, isOpen])
 
-
   const handleAmountChange = (e) => {
     const value = e.target.value.replace(/,/g, '');
     
@@ -77,16 +71,22 @@ const TransactionModal = ({ isOpen, onClose, type, initialData, onSuccess }) => 
     }
   }
 
-
   const handleSubmit = async (e) => {
     e.preventDefault()
+
+    // 1. VALIDATION: Ensure amount is valid number
+    const numericAmount = parseFloat(form.amount);
+    if (!form.amount || isNaN(numericAmount) || numericAmount <= 0) {
+        alert("Please enter a valid amount greater than 0");
+        return;
+    }
+
     setLoading(true)
     const recordId = form.id; 
 
-
     try {
         const payload = { 
-            amount: form.amount,
+            amount: numericAmount, // 2. CONVERT TO NUMBER
             category: form.category,
             description: form.description || "Untitled",
             date: form.date,
@@ -94,26 +94,25 @@ const TransactionModal = ({ isOpen, onClose, type, initialData, onSuccess }) => 
             type: type 
         }
 
+        const config = { withCredentials: true }; 
 
-        if (recordId) await axios.put(`${API_URL}/transactions/${recordId}`, payload)
-        else await axios.post(`${API_URL}/transactions`, payload)
+        if (recordId) await axios.put(`${API_URL}/transactions/${recordId}`, payload, config)
+        else await axios.post(`${API_URL}/transactions`, payload, config)
         
         onSuccess() 
         onClose()
     } catch(e) { 
         console.error("Submission Error:", e)
-        alert("Failed to save transaction.") 
+        // 3. BETTER ERROR MESSAGE
+        alert(e.response?.data?.error || "Failed to save transaction.") 
     } finally {
         setLoading(false)
     }
   }
 
-
   if (!isOpen) return null;
 
-
   const isIncome = type === 'income';
-
 
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in p-4" onClick={onClose}>
@@ -133,7 +132,6 @@ const TransactionModal = ({ isOpen, onClose, type, initialData, onSuccess }) => 
             <X size={18}/>
           </button>
 
-
           {/* Title */}
           <div className="flex items-center gap-3">
             <div className={`w-10 h-10 rounded-xl flex items-center justify-center border ${theme === 'dark' ? (isIncome ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-red-500/10 border-red-500/30') : 'bg-[#F5F5DC] border-[#654321]/30'}`}>
@@ -149,7 +147,6 @@ const TransactionModal = ({ isOpen, onClose, type, initialData, onSuccess }) => 
             </div>
           </div>
         </div>
-
 
         {/* FORM */}
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
@@ -177,7 +174,6 @@ const TransactionModal = ({ isOpen, onClose, type, initialData, onSuccess }) => 
                     </div>
                 )}
             </div>
-
 
             {/* CATEGORY & RECURRENCE */}
             <div className="grid grid-cols-2 gap-3">
@@ -211,7 +207,6 @@ const TransactionModal = ({ isOpen, onClose, type, initialData, onSuccess }) => 
                 </div>
             </div>
 
-
             {/* AMOUNT */}
             <div>
                 <label className={`text-[10px] font-bold uppercase tracking-widest mb-1.5 block ${theme === 'dark' ? 'text-gray-400' : 'text-[#654321]/70'}`}>
@@ -231,7 +226,6 @@ const TransactionModal = ({ isOpen, onClose, type, initialData, onSuccess }) => 
                 </div>
             </div>
 
-
             {/* DESCRIPTION */}
             <div>
                 <label className={`text-[10px] font-bold uppercase tracking-widest mb-1.5 block ${theme === 'dark' ? 'text-gray-400' : 'text-[#654321]/70'}`}>
@@ -245,7 +239,6 @@ const TransactionModal = ({ isOpen, onClose, type, initialData, onSuccess }) => 
                   placeholder="e.g. Monthly Salary..." 
                 />
             </div>
-
 
             {/* SUBMIT BUTTON */}
             <button 
@@ -266,6 +259,5 @@ const TransactionModal = ({ isOpen, onClose, type, initialData, onSuccess }) => 
     </div>
   )
 }
-
 
 export default TransactionModal

@@ -4,9 +4,7 @@ import { Save, Target, Calendar as CalendarIcon, X } from 'lucide-react'
 import CustomCalendar from '../CustomCalendar'
 import { useTheme } from '../../context/ThemeContext'
 
-
 const API_URL = 'http://127.0.0.1:5000/api';
-
 
 const GoalModal = ({ isOpen, onClose, initialData, onSuccess }) => {
   const { theme } = useTheme()
@@ -15,9 +13,7 @@ const GoalModal = ({ isOpen, onClose, initialData, onSuccess }) => {
   const [displayTarget, setDisplayTarget] = useState('')
   const [displaySaved, setDisplaySaved] = useState('')
 
-
   const getToday = () => new Date().toISOString().split('T')[0]
-
 
   const [form, setForm] = useState({
     id: null,
@@ -28,12 +24,12 @@ const GoalModal = ({ isOpen, onClose, initialData, onSuccess }) => {
     color: '#ec4899' 
   })
 
-
   useEffect(() => {
     if (isOpen) {
         if (initialData) {
-            const target = initialData.target_amount || '';
-            const saved = initialData.saved_amount || '';
+            const target = initialData.target_amount ?? '';
+            const saved = initialData.saved_amount ?? '';
+            
             setForm({
                 id: initialData.id || initialData._id,
                 name: initialData.name || '',
@@ -42,8 +38,10 @@ const GoalModal = ({ isOpen, onClose, initialData, onSuccess }) => {
                 deadline: initialData.deadline || getToday(),
                 color: initialData.color || '#ec4899'
             })
-            setDisplayTarget(target ? parseFloat(target).toLocaleString('en-IN') : '')
-            setDisplaySaved(saved ? parseFloat(saved).toLocaleString('en-IN') : '')
+            
+            // Format initial values
+            setDisplayTarget(target !== '' ? parseFloat(target).toLocaleString('en-IN') : '')
+            setDisplaySaved(saved !== '' ? parseFloat(saved).toLocaleString('en-IN') : '')
         } else {
             setForm({ 
                 id: null, 
@@ -59,42 +57,55 @@ const GoalModal = ({ isOpen, onClose, initialData, onSuccess }) => {
     }
   }, [initialData, isOpen])
 
-
   const handleTargetChange = (e) => {
-    const value = e.target.value.replace(/,/g, '');
-    if (value === '' || /^\d*\.?\d{0,2}$/.test(value)) {
-      setForm({...form, target_amount: value})
-      if (value) {
-        const parts = value.split('.')
-        parts[0] = parseFloat(parts[0]).toLocaleString('en-IN')
-        setDisplayTarget(parts.join('.'))
+    // Remove existing commas to get raw number string
+    const rawValue = e.target.value.replace(/,/g, '');
+    
+    // Validate: allow empty or decimal number
+    if (rawValue === '' || /^\d*\.?\d{0,2}$/.test(rawValue)) {
+      setForm({...form, target_amount: rawValue})
+      
+      if (rawValue !== '') {
+        const number = parseFloat(rawValue);
+        if (!isNaN(number)) {
+             // Split decimal part to preserve trailing .0 or .00 user might be typing
+            const parts = rawValue.split('.');
+            parts[0] = parseFloat(parts[0]).toLocaleString('en-IN');
+            setDisplayTarget(parts.join('.'));
+        } else {
+            setDisplayTarget(rawValue);
+        }
       } else {
-        setDisplayTarget('')
+        setDisplayTarget('');
       }
     }
   }
-
 
   const handleSavedChange = (e) => {
-    const value = e.target.value.replace(/,/g, '');
-    if (value === '' || /^\d*\.?\d{0,2}$/.test(value)) {
-      setForm({...form, saved_amount: value})
-      if (value) {
-        const parts = value.split('.')
-        parts[0] = parseFloat(parts[0]).toLocaleString('en-IN')
-        setDisplaySaved(parts.join('.'))
+    const rawValue = e.target.value.replace(/,/g, '');
+    
+    if (rawValue === '' || /^\d*\.?\d{0,2}$/.test(rawValue)) {
+      setForm({...form, saved_amount: rawValue})
+      
+      if (rawValue !== '') {
+        const number = parseFloat(rawValue);
+        if (!isNaN(number)) {
+            const parts = rawValue.split('.');
+            parts[0] = parseFloat(parts[0]).toLocaleString('en-IN');
+            setDisplaySaved(parts.join('.'));
+        } else {
+            setDisplaySaved(rawValue);
+        }
       } else {
-        setDisplaySaved('')
+        setDisplaySaved('');
       }
     }
   }
-
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     setLoading(true)
     const recordId = form.id; 
-
 
     try {
         if (recordId) await axios.put(`${API_URL}/goals/${recordId}`, form)
@@ -110,9 +121,7 @@ const GoalModal = ({ isOpen, onClose, initialData, onSuccess }) => {
     }
   }
 
-
   if (!isOpen) return null;
-
 
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in p-4" onClick={onClose}>
@@ -132,7 +141,6 @@ const GoalModal = ({ isOpen, onClose, initialData, onSuccess }) => {
             <X size={18}/>
           </button>
 
-
           {/* Title */}
           <div className="flex items-center gap-3">
             <div className={`w-10 h-10 rounded-xl flex items-center justify-center border ${theme === 'dark' ? 'bg-pink-500/10 border-pink-500/30' : 'bg-[#F5F5DC] border-[#654321]/30'}`}>
@@ -149,9 +157,8 @@ const GoalModal = ({ isOpen, onClose, initialData, onSuccess }) => {
           </div>
         </div>
 
-
         {/* FORM */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="p-6 space-y-5">
             
             {/* NAME */}
             <div>
@@ -160,7 +167,7 @@ const GoalModal = ({ isOpen, onClose, initialData, onSuccess }) => {
                 </label>
                 <input 
                     type="text" 
-                    className={`w-full px-3 py-2.5 rounded-xl border outline-none transition font-bold text-sm ${theme === 'dark' ? 'bg-white/5 border-white/10 focus:border-pink-500/50 text-white placeholder-gray-600' : 'bg-white border-[#C9A87C]/50 focus:border-[#654321] text-[#4B3621] placeholder-[#654321]/40'}`}
+                    className={`w-full px-4 py-3 rounded-xl border outline-none transition font-bold text-base ${theme === 'dark' ? 'bg-white/5 border-white/10 focus:border-pink-500/50 text-white placeholder-gray-600' : 'bg-white border-[#C9A87C]/50 focus:border-[#654321] text-[#4B3621] placeholder-[#654321]/40'}`}
                     value={form.name} 
                     onChange={e => setForm({...form, name: e.target.value})} 
                     placeholder="e.g. Dream House, New Car..." 
@@ -169,19 +176,18 @@ const GoalModal = ({ isOpen, onClose, initialData, onSuccess }) => {
                 />
             </div>
 
-
             {/* AMOUNTS GRID */}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-4">
                 <div>
                     <label className={`text-[10px] font-bold uppercase tracking-widest mb-1.5 block ${theme === 'dark' ? 'text-gray-400' : 'text-[#654321]/70'}`}>
                       Target Amount
                     </label>
                     <div className="relative">
-                        <div className={`absolute left-3 top-1/2 -translate-y-1/2 text-sm ${theme === 'dark' ? 'text-gray-500' : 'text-[#654321]'}`}>₹</div>
+                        <div className={`absolute left-4 top-1/2 -translate-y-1/2 text-base font-bold ${theme === 'dark' ? 'text-gray-500' : 'text-[#654321]/50'}`}>₹</div>
                         <input 
                             type="text"
                             inputMode="decimal"
-                            className={`w-full pl-8 pr-3 py-2.5 rounded-xl border outline-none transition font-bold text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none caret-transparent ${theme === 'dark' ? 'bg-white/5 border-white/10 focus:border-pink-500/50 text-white placeholder-gray-600' : 'bg-white border-[#C9A87C]/50 focus:border-[#654321] text-[#4B3621] placeholder-[#654321]/40'}`}
+                            className={`w-full pl-8 pr-4 py-3 rounded-xl border outline-none transition font-bold text-lg [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${theme === 'dark' ? 'bg-white/5 border-white/10 focus:border-pink-500/50 text-white placeholder-gray-600' : 'bg-white border-[#C9A87C]/50 focus:border-[#654321] text-[#4B3621] placeholder-[#654321]/40'}`}
                             value={displayTarget} 
                             onChange={handleTargetChange} 
                             placeholder="0.00" 
@@ -190,17 +196,16 @@ const GoalModal = ({ isOpen, onClose, initialData, onSuccess }) => {
                     </div>
                 </div>
 
-
                 <div>
                     <label className={`text-[10px] font-bold uppercase tracking-widest mb-1.5 block ${theme === 'dark' ? 'text-gray-400' : 'text-[#654321]/70'}`}>
                       Saved So Far
                     </label>
                     <div className="relative">
-                        <div className={`absolute left-3 top-1/2 -translate-y-1/2 text-sm ${theme === 'dark' ? 'text-gray-500' : 'text-[#654321]'}`}>₹</div>
+                        <div className={`absolute left-4 top-1/2 -translate-y-1/2 text-base font-bold ${theme === 'dark' ? 'text-gray-500' : 'text-[#654321]/50'}`}>₹</div>
                         <input 
                             type="text"
                             inputMode="decimal"
-                            className={`w-full pl-8 pr-3 py-2.5 rounded-xl border outline-none transition font-bold text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none caret-transparent ${theme === 'dark' ? 'bg-white/5 border-white/10 focus:border-pink-500/50 text-white placeholder-gray-600' : 'bg-white border-[#C9A87C]/50 focus:border-[#654321] text-[#4B3621] placeholder-[#654321]/40'}`}
+                            className={`w-full pl-8 pr-4 py-3 rounded-xl border outline-none transition font-bold text-lg [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${theme === 'dark' ? 'bg-white/5 border-white/10 focus:border-pink-500/50 text-white placeholder-gray-600' : 'bg-white border-[#C9A87C]/50 focus:border-[#654321] text-[#4B3621] placeholder-[#654321]/40'}`}
                             value={displaySaved} 
                             onChange={handleSavedChange} 
                             placeholder="0.00" 
@@ -208,7 +213,6 @@ const GoalModal = ({ isOpen, onClose, initialData, onSuccess }) => {
                     </div>
                 </div>
             </div>
-
 
             {/* DEADLINE */}
             <div className="relative">
@@ -218,10 +222,10 @@ const GoalModal = ({ isOpen, onClose, initialData, onSuccess }) => {
                 <button 
                   type="button" 
                   onClick={(e) => { e.stopPropagation(); setActiveCalendar(!activeCalendar); }} 
-                  className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-xl border transition text-left ${theme === 'dark' ? 'bg-white/5 border-white/10 hover:border-pink-500/50 text-white' : 'bg-white border-[#C9A87C]/50 hover:border-[#654321] text-[#4B3621]'}`}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border transition text-left ${theme === 'dark' ? 'bg-white/5 border-white/10 hover:border-pink-500/50 text-white' : 'bg-white border-[#C9A87C]/50 hover:border-[#654321] text-[#4B3621]'}`}
                 >
-                    <CalendarIcon size={16} className={theme === 'dark' ? 'text-pink-400' : 'text-[#654321]'}/>
-                    <span className="font-mono text-sm font-bold">{form.deadline}</span>
+                    <CalendarIcon size={18} className={theme === 'dark' ? 'text-pink-400' : 'text-[#654321]'}/>
+                    <span className="font-mono text-base font-bold">{form.deadline}</span>
                 </button>
                 {activeCalendar && (
                     <div className="absolute top-full left-0 z-50 mt-2">
@@ -234,11 +238,10 @@ const GoalModal = ({ isOpen, onClose, initialData, onSuccess }) => {
                 )}
             </div>
 
-
             {/* SUBMIT BUTTON */}
             <button 
               disabled={loading} 
-              className={`w-full py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all border mt-2 ${theme === 'dark' ? 'bg-pink-600 hover:bg-pink-500 text-white shadow-[0_0_20px_rgba(236,72,153,0.4)] border-pink-400' : 'bg-[#F5F5DC] hover:bg-[#F5F5DC]/80 text-[#4B3621] border-[#654321]/30 shadow-lg'}`}
+              className={`w-full py-4 rounded-xl font-bold text-sm tracking-widest uppercase flex items-center justify-center gap-2 transition-all border mt-2 ${theme === 'dark' ? 'bg-pink-600 hover:bg-pink-500 text-white shadow-[0_0_20px_rgba(236,72,153,0.4)] border-pink-400' : 'bg-[#F5F5DC] hover:bg-[#F5F5DC]/80 text-[#4B3621] border-[#654321]/30 shadow-lg'}`}
             >
                 {loading ? (
                   <span className="animate-spin">⌛</span>
@@ -254,6 +257,5 @@ const GoalModal = ({ isOpen, onClose, initialData, onSuccess }) => {
     </div>
   )
 }
-
 
 export default GoalModal
