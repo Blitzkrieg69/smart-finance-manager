@@ -19,7 +19,7 @@ const Login = ({ onLoginSuccess }) => {
 
     try {
       const endpoint = isLogin ? '/api/auth/login' : '/api/auth/register'
-      const response = await axios.post(`http://127.0.0.1:5001${endpoint}`, formData, {
+      const response = await axios.post(`http://127.0.0.1:5000${endpoint}`, formData, {
         withCredentials: true
       })
 

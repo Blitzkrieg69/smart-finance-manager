@@ -26,7 +26,7 @@ const Investments = ({ investments = [], openModal, handleDelete, handleEdit, cu
   const handleRefresh = async () => {
       setRefreshing(true)
       try {
-          const res = await axios.post('http://127.0.0.1:5001/api/investments/refresh')
+          const res = await axios.post('http://127.0.0.1:5000/api/investments/refresh')
           if(res.status === 200) window.location.reload()
       } catch (err) { alert("Failed to update prices.") } 
       finally { setRefreshing(false) }

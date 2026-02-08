@@ -1,9 +1,11 @@
 import { LayoutDashboard, TrendingUp, TrendingDown, PieChart, Briefcase, Target, Download, Sun, Moon } from 'lucide-react'
+import { Link, useLocation } from 'react-router-dom'
 import { useTheme } from '../context/ThemeContext'
 
-
-const Sidebar = ({ view, setView, onExport }) => { 
-  const { theme, setTheme } = useTheme() 
+const Sidebar = ({ onExport }) => { 
+  const { theme, setTheme } = useTheme()
+  const location = useLocation()
+  const view = location.pathname.slice(1) || 'dashboard'
   
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, color: 'text-blue-500' },
@@ -13,7 +15,6 @@ const Sidebar = ({ view, setView, onExport }) => {
     { id: 'goals', label: 'Goals', icon: Target, color: 'text-pink-500' },
     { id: 'budget', label: 'Budgets', icon: PieChart, color: 'text-yellow-400' },
   ]
-
 
   // DARK MODE (Neon) - UNCHANGED
   const darkActiveStyles = {
@@ -35,7 +36,6 @@ const Sidebar = ({ view, setView, onExport }) => {
       budget: "bg-[#F5F5DC] text-[#8B4513] border-[#8B4513]/30 shadow-md"
   }
 
-
   const getActiveClass = (id) => {
       if (theme === 'light') {
           return lightActiveStyles[id] || "bg-[#F5F5DC] text-[#8B4513] border border-[#8B4513]/30 shadow-md"
@@ -43,7 +43,6 @@ const Sidebar = ({ view, setView, onExport }) => {
       // Dark Mode (Neon - UNCHANGED)
       return darkActiveStyles[id] || "bg-white/10 text-white"
   }
-
 
   return (
     <div className={`w-64 border-r flex flex-col shrink-0 transition-all duration-300 relative z-20 ${theme === 'dark' ? 'bg-black border-blue-900/30 shadow-[5px_0_30px_rgba(0,0,0,0.8)]' : 'bg-[#FFF8F0] border-[#8B4513]/20 shadow-lg'}`}>
@@ -55,7 +54,6 @@ const Sidebar = ({ view, setView, onExport }) => {
         <h1 className={`font-black text-3xl tracking-wider ${theme === 'dark' ? 'text-blue-500 drop-shadow-[0_0_10px_#3b82f6]' : 'text-[#8B4513]'}`}>SFM</h1>
       </div>
 
-
       {/* NAVIGATION MENU */}
       <div className="flex-1 overflow-y-auto py-8 px-4 space-y-2 custom-scrollbar">
         <p className={`px-2 text-[10px] font-bold uppercase tracking-[0.2em] mb-4 ${theme === 'dark' ? 'text-gray-600' : 'text-[#8B4513]/50'}`}>Main Menu</p>
@@ -65,9 +63,9 @@ const Sidebar = ({ view, setView, onExport }) => {
             const isActive = view === item.id
             
             return (
-                <button 
+                <Link 
                     key={item.id}
-                    onClick={() => setView(item.id)}
+                    to={`/${item.id}`}
                     className={`
                       w-full flex items-center gap-4 px-4 py-3.5 rounded-xl transition-all duration-300 group border border-transparent
                       ${isActive ? getActiveClass(item.id) : (theme === 'dark' ? 'text-gray-400 hover:bg-white/5 hover:text-white' : 'text-[#8B4513]/70 hover:bg-[#F5F5DC]/50 hover:text-[#8B4513]')}
@@ -78,10 +76,9 @@ const Sidebar = ({ view, setView, onExport }) => {
                         className={`transition-all duration-300 ${isActive ? (theme === 'dark' ? 'scale-110 drop-shadow-[0_0_5px_currentColor]' : 'scale-110') : `${item.color} opacity-70 group-hover:opacity-100`}`} 
                     />
                     <span className="font-bold text-sm tracking-wide">{item.label}</span>
-                </button>
+                </Link>
             )
         })}
-
 
         {/* SYSTEM ACTIONS */}
         <div className={`pt-8 mt-4 border-t ${theme === 'dark' ? 'border-white/5' : 'border-[#8B4513]/10'}`}>
@@ -92,7 +89,6 @@ const Sidebar = ({ view, setView, onExport }) => {
             </button>
         </div>
       </div>
-
 
       {/* FOOTER (Theme Toggle) */}
       <div className={`p-4 border-t ${theme === 'dark' ? 'bg-black border-white/5' : 'bg-[#FFF8F0] border-[#8B4513]/10'}`}>
@@ -112,6 +108,5 @@ const Sidebar = ({ view, setView, onExport }) => {
     </div>
   )
 }
-
 
 export default Sidebar
