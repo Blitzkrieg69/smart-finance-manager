@@ -10,7 +10,6 @@ const BudgetModal = ({
   onClose,
   initialData,
   onSuccess,
-  // NEW (optional): pass categories/expenses from parent so suggestions show up
   categories = [],
   expenses = []
 }) => {
@@ -39,7 +38,7 @@ const BudgetModal = ({
       'Food',
       'Transport',
       'Rent',
-      'Bills',
+      'Utilities',  // ✅ Changed from 'Bills' to 'Utilities'
       'Entertainment',
       'Health',
       'Education',
@@ -92,7 +91,6 @@ const BudgetModal = ({
 
       if (value) {
         const parts = value.split('.')
-        // format integer part
         parts[0] = parts[0] ? parseFloat(parts[0]).toLocaleString('en-IN') : ''
         setDisplayLimit(parts.join('.'))
       } else {

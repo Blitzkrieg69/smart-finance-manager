@@ -3,22 +3,19 @@ import { CheckCircle, AlertTriangle, PieChart, Trash2, Edit2, Plus, ShieldAlert,
 import { useTheme } from '../context/ThemeContext'
 import { formatIndianNumber } from '../utils/formatNumber'
 
-
 const Budgets = ({ budgets = [], expenses = [], openModal, handleDelete, handleEdit }) => { 
   const { theme, styles } = useTheme() 
   const [periodFilter, setPeriodFilter] = useState('All')
   
   const currency = '₹';
 
+  const normalizePeriod = (p) =>
+    ((p ?? 'Monthly').toString()).trim().toLowerCase()
 
-const normalizePeriod = (p) =>
-  ((p ?? 'Monthly').toString()).trim().toLowerCase()
-
-const filteredBudgets =
-  periodFilter === 'All'
-    ? budgets
-    : budgets.filter(b => normalizePeriod(b.period) === normalizePeriod(periodFilter))
-
+  const filteredBudgets =
+    periodFilter === 'All'
+      ? budgets
+      : budgets.filter(b => normalizePeriod(b.period) === normalizePeriod(periodFilter))
 
   // --- SMART CALCULATIONS (TIME AWARE) ---
   const calculateBudgetStats = (limit, spent, period) => {
@@ -28,7 +25,6 @@ const filteredBudgets =
       const now = new Date();
       let daysPassed = 0;
       let totalDays = 0;
-
 
       // 1. Determine Time Progress
       if (period === 'Weekly') {
@@ -47,22 +43,18 @@ const filteredBudgets =
           totalDays = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate(); // Days in current month
       }
 
-
       // 2. Calculate "Allowed Spend to Date"
       const dailyRate = numLimit / totalDays;
       const allowedToDate = dailyRate * daysPassed;
-
 
       // 3. Calculate Status
       const diff = allowedToDate - numSpent; 
       const isTrackOver = diff < 0;
       const trackAmount = Math.abs(diff);
 
-
       // 4. Standard Total remaining
       const totalRemaining = numLimit - numSpent;
       const totalIsOver = totalRemaining < 0;
-
 
       return {
           pace: {
@@ -87,7 +79,6 @@ const filteredBudgets =
       };
   }
 
-
   // --- DYNAMIC STYLES ---
   const getCardGradient = (statusColor) => {
       if (theme === 'dark') {
@@ -106,7 +97,6 @@ const filteredBudgets =
       }
   }
 
-
   const getTextColor = (statusColor) => {
       if (theme === 'dark') {
           switch(statusColor) {
@@ -124,7 +114,6 @@ const filteredBudgets =
       }
   }
 
-
   return (
     <div className={`flex-1 h-full overflow-y-auto custom-scrollbar animate-fade-in ${styles.bg}`}>
       <div className="p-6 flex flex-col gap-8 min-h-min">
@@ -141,7 +130,6 @@ const filteredBudgets =
             </p>
          </div>
 
-
          <div className="flex gap-3">
              {/* Period Toggle */}
              <div className={`flex p-1 rounded-xl border ${theme === 'dark' ? 'bg-black border-white/10' : 'bg-white border-[#C9A87C]/50'}`}>
@@ -156,7 +144,6 @@ const filteredBudgets =
                  ))}
              </div>
 
-
              <button 
                 onClick={() => openModal('budget')} 
                 className={`flex items-center gap-2 px-6 py-2 rounded-xl font-bold transition-all duration-300 hover:scale-105 border ${theme === 'dark' ? 'bg-yellow-400 text-black shadow-[0_0_20px_#facc15] hover:shadow-[0_0_40px_#facc15] border-yellow-300' : 'bg-[#F5F5DC] text-[#4B3621] border-[#654321]/30 shadow-lg hover:bg-[#F5F5DC]/80'}`}
@@ -167,14 +154,11 @@ const filteredBudgets =
          </div>
       </div>
 
-
       {/* BUDGET CARDS GRID */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
            {filteredBudgets.map((b, index) => { 
-             const spent = expenses
-                .filter(e => e.category === b.category)
-                .reduce((sum, e) => sum + parseFloat(e.amount || 0), 0)
-
+             // ✅ Use backend-calculated spent (already period-aware)
+             const spent = b.spent || 0;
 
              const limit = parseFloat(b.limit || 0);
              
@@ -188,9 +172,7 @@ const filteredBudgets =
              if(percent > 80) { statusColor = 'orange'; Icon = AlertTriangle }
              if(percent >= 100) { statusColor = 'red'; Icon = ShieldAlert }
 
-
              const textColor = getTextColor(statusColor);
-
 
              return (
                <div key={b.id || b._id || index} className={`relative p-6 rounded-2xl border transition-all duration-500 group overflow-hidden flex flex-col ${getCardGradient(statusColor)}`}>
@@ -199,7 +181,6 @@ const filteredBudgets =
                   <div className={`absolute -right-6 -top-6 opacity-10 rotate-12 transition-transform group-hover:rotate-0 group-hover:scale-110 ${textColor}`}>
                       <Icon size={120} />
                   </div>
-
 
                   {/* HEADER ROW */}
                   <div className="flex justify-between items-start relative z-10 mb-4">
@@ -224,7 +205,6 @@ const filteredBudgets =
                       </div>
                   </div>
 
-
                   {/* TIME-AWARE STATUS */}
                   <div className="mb-4 relative z-10">
                       <div className={`p-3 rounded-xl border flex items-center justify-between ${stats.track.isOver ? (theme === 'dark' ? 'bg-red-900/20 border-red-500/30' : 'bg-red-100 border-red-400') : (theme === 'dark' ? 'bg-emerald-900/20 border-emerald-500/30' : 'bg-emerald-100 border-emerald-400')}`}>
@@ -242,7 +222,6 @@ const filteredBudgets =
                           </div>
                       </div>
                   </div>
-
 
                   {/* SPEND / LIMIT DISPLAY */}
                   <div className="mb-6 relative z-10 mt-auto">
@@ -269,7 +248,6 @@ const filteredBudgets =
                     </p>
                   </div>
 
-
                   {/* SPEND PACE GRID */}
                   <div className={`mt-auto p-3 rounded-xl border backdrop-blur-sm relative z-10 ${theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-white border-[#C9A87C]/30'}`}>
                       <div className="flex items-center gap-2 mb-3">
@@ -292,11 +270,9 @@ const filteredBudgets =
                       </div>
                   </div>
 
-
                </div>
              )
            })}
-
 
            {/* EMPTY STATE */}
            {filteredBudgets.length === 0 && (
@@ -318,6 +294,5 @@ const filteredBudgets =
     </div>
   )
 }
-
 
 export default Budgets

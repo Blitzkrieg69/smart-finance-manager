@@ -62,6 +62,8 @@ app.use('/api/budgets', require('./routes/budgets'));
 app.use('/api/investments', require('./routes/investments'));
 app.use('/api/goals', require('./routes/goals'));
 app.use('/api/export', require('./routes/export'));
+app.use('/api/analytics', require('./routes/analytics'));
+app.use('/api/predictions', require('./routes/predictions'));
 
 // --- START ---
 app.listen(PORT, () => {

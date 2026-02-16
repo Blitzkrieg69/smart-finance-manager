@@ -81,12 +81,19 @@ const TransactionModal = ({ isOpen, onClose, type, initialData, onSuccess }) => 
         return;
     }
 
+    // 2. VALIDATION: Ensure description/title is provided
+    if (!form.description || form.description.trim() === '') {
+        alert("Please enter a description");
+        return;
+    }
+
     setLoading(true)
     const recordId = form.id; 
 
     try {
         const payload = { 
-            amount: numericAmount, // 2. CONVERT TO NUMBER
+            title: form.description || "Untitled", // ✅ Backend requires title
+            amount: numericAmount, 
             category: form.category,
             description: form.description || "Untitled",
             date: form.date,
@@ -96,14 +103,16 @@ const TransactionModal = ({ isOpen, onClose, type, initialData, onSuccess }) => 
 
         const config = { withCredentials: true }; 
 
-        if (recordId) await axios.put(`${API_URL}/transactions/${recordId}`, payload, config)
-        else await axios.post(`${API_URL}/transactions`, payload, config)
+        if (recordId) {
+            await axios.put(`${API_URL}/transactions/${recordId}`, payload, config)
+        } else {
+            await axios.post(`${API_URL}/transactions`, payload, config)
+        }
         
         onSuccess() 
         onClose()
     } catch(e) { 
         console.error("Submission Error:", e)
-        // 3. BETTER ERROR MESSAGE
         alert(e.response?.data?.error || "Failed to save transaction.") 
     } finally {
         setLoading(false)
@@ -229,7 +238,7 @@ const TransactionModal = ({ isOpen, onClose, type, initialData, onSuccess }) => 
             {/* DESCRIPTION */}
             <div>
                 <label className={`text-[10px] font-bold uppercase tracking-widest mb-1.5 block ${theme === 'dark' ? 'text-gray-400' : 'text-[#654321]/70'}`}>
-                  Description (Optional)
+                  Description
                 </label>
                 <input 
                   type="text" 
@@ -237,6 +246,7 @@ const TransactionModal = ({ isOpen, onClose, type, initialData, onSuccess }) => 
                   value={form.description} 
                   onChange={e => setForm({...form, description: e.target.value})} 
                   placeholder="e.g. Monthly Salary..." 
+                  required
                 />
             </div>
 

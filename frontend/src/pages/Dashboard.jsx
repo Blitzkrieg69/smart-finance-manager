@@ -1,270 +1,568 @@
-import { BarChart, Bar, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts'
-import { Wallet, TrendingUp, TrendingDown, ArrowUpRight, ArrowDownRight, Activity } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import {
+  TrendingUp,
+  TrendingDown,
+  Wallet,
+  AlertCircle,
+  CheckCircle,
+  Info,
+  AlertTriangle,
+  Activity,
+  ArrowUpRight,
+  ArrowDownRight,
+  Zap,
+  TrendingDown as TrendingDownIcon
+} from 'lucide-react'
 import { useTheme } from '../context/ThemeContext'
 import { formatIndianNumber } from '../utils/formatNumber'
+import { LineChart, Line, BarChart, Bar, CartesianGrid, Tooltip, ResponsiveContainer, XAxis, YAxis } from 'recharts'
 
 
 const Dashboard = ({ transactions, budgets, openModal, currency }) => {
   const { theme, styles } = useTheme()
 
+  // State for API data
+  const [healthScore, setHealthScore] = useState(null)
+  const [insights, setInsights] = useState([])
+  const [cashflow, setCashflow] = useState(null)
+  const [budgetIntelligence, setBudgetIntelligence] = useState(null)
+  const [patterns, setPatterns] = useState(null)
+  const [loading, setLoading] = useState(true)
+
+  // Calculate basic stats
   const income = transactions.filter(t => t.type === 'income')
   const expenses = transactions.filter(t => t.type === 'expense')
   const totalIncome = income.reduce((sum, t) => sum + parseFloat(t.amount || 0), 0)
   const totalExpense = expenses.reduce((sum, t) => sum + parseFloat(t.amount || 0), 0)
   const balance = totalIncome - totalExpense
 
+  // Fetch all analytics data
+  useEffect(() => {
+    const fetchAnalytics = async () => {
+      try {
+        setLoading(true)
 
-  const COLORS = theme === 'dark'
-    ? ['#3b82f6', '#06b6d4', '#8b5cf6', '#ec4899', '#10b981', '#f59e0b', '#ef4444']
-    : ['#4B3621', '#654321', '#8B4513', '#A0522D', '#6B4423', '#765341', '#5D4037']
+        const [healthRes, insightsRes, cashflowRes, budgetRes, patternsRes] = await Promise.all([
+          fetch('http://localhost:5000/api/analytics/health-score', { credentials: 'include' }).catch(() => ({ ok: false })),
+          fetch('http://localhost:5000/api/analytics/insights', { credentials: 'include' }).catch(() => ({ ok: false })),
+          fetch('http://localhost:5000/api/predictions/cashflow', { credentials: 'include' }).catch(() => ({ ok: false })),
+          fetch('http://localhost:5000/api/predictions/budget-burnrate', { credentials: 'include' }).catch(() => ({ ok: false })),
+          fetch('http://localhost:5000/api/analytics/patterns', { credentials: 'include' }).catch(() => ({ ok: false }))
+        ])
 
+        if (healthRes.ok) setHealthScore(await healthRes.json())
+        if (insightsRes.ok) {
+          const data = await insightsRes.json()
+          setInsights(data.insights || [])
+        }
+        if (cashflowRes.ok) setCashflow(await cashflowRes.json())
+        if (budgetRes.ok) setBudgetIntelligence(await budgetRes.json())
+        if (patternsRes.ok) setPatterns(await patternsRes.json())
 
-  const performanceData = transactions.slice(-7).map((t, i) => ({
-    name: t.date || `Tx ${i + 1}`,
-    income: t.type === 'income' ? parseFloat(t.amount || 0) : 0,
-    expense: t.type === 'expense' ? parseFloat(t.amount || 0) : 0
-  }))
-
-
-  const expensePieData = expenses.reduce((acc, item) => {
-    const found = acc.find(x => x.name === item.category)
-    if (found) found.value += parseFloat(item.amount || 0)
-    else acc.push({ name: item.category, value: parseFloat(item.amount || 0) })
-    return acc
-  }, [])
-
-
-  // Custom Tooltip
-  const CustomTooltip = ({ active, payload, label }) => {
-    if (active && payload && payload.length) {
-      return (
-        <div className={`p-4 rounded-xl border ${theme === 'dark' ? 'bg-black border-blue-500/50 shadow-[0_0_20px_rgba(59,130,246,0.4)]' : 'bg-[#FFF8F0] border-[#654321]/30 shadow-lg'}`}>
-          <p className={`text-[10px] font-bold uppercase tracking-widest mb-2 ${theme === 'dark' ? 'text-gray-400' : 'text-[#654321]/70'}`}>{label}</p>
-          {payload.map((p, index) => (
-            <div key={index} className="flex justify-between gap-4 text-xs font-bold mb-1 last:mb-0">
-              <span style={{ color: theme === 'dark' ? p.color : '#4B3621' }}>{p.name}:</span>
-              <span className={`font-mono ${theme === 'dark' ? 'text-white' : 'text-[#4B3621]'}`}>{currency}{formatIndianNumber(p.value)}</span>
-            </div>
-          ))}
-        </div>
-      )
+        setLoading(false)
+      } catch (err) {
+        console.error('Analytics error:', err)
+        setLoading(false)
+      }
     }
-    return null
-  }
 
+    if (transactions && transactions.length > 0) {
+      fetchAnalytics()
+    } else {
+      setLoading(false)
+    }
+  }, [transactions?.length])
 
-  // Card Style Generator
+  // Card style helper
   const getCardStyle = (colorType) => {
-    const base = `p-6 rounded-2xl border transition-all duration-500 relative overflow-hidden group flex flex-col ${styles.card}`
-
+    const base = `p-6 rounded-2xl border transition-all duration-300 ${styles.card}`
     if (theme !== 'dark') return `${base} shadow-lg`
 
-
     switch (colorType) {
-      case 'blue': return `${base} border-blue-500/40 shadow-[0_0_30px_rgba(59,130,246,0.2)] hover:border-blue-400 hover:shadow-[0_0_40px_rgba(59,130,246,0.3)]`
-      case 'green': return `${base} border-emerald-500/40 shadow-[0_0_30px_rgba(16,185,129,0.2)] hover:border-emerald-400 hover:shadow-[0_0_40px_rgba(16,185,129,0.3)]`
-      case 'red': return `${base} border-red-500/40 shadow-[0_0_30px_rgba(239,68,68,0.2)] hover:border-red-400 hover:shadow-[0_0_40px_rgba(239,68,68,0.3)]`
+      case 'blue': return `${base} border-blue-500/40 shadow-[0_0_30px_rgba(59,130,246,0.15)] hover:shadow-[0_0_40px_rgba(59,130,246,0.25)]`
+      case 'green': return `${base} border-emerald-500/40 shadow-[0_0_30px_rgba(16,185,129,0.15)] hover:shadow-[0_0_40px_rgba(16,185,129,0.25)]`
+      case 'red': return `${base} border-red-500/40 shadow-[0_0_30px_rgba(239,68,68,0.15)] hover:shadow-[0_0_40px_rgba(239,68,68,0.25)]`
+      case 'purple': return `${base} border-purple-500/40 shadow-[0_0_30px_rgba(168,85,247,0.15)] hover:shadow-[0_0_40px_rgba(168,85,247,0.25)]`
       default: return base
     }
   }
 
+  // Get health score color
+  const getHealthColor = (score) => {
+    if (score >= 70) return theme === 'dark' ? '#10b981' : '#4B3621'
+    if (score >= 40) return theme === 'dark' ? '#f59e0b' : '#654321'
+    return theme === 'dark' ? '#ef4444' : '#4B3621'
+  }
+
+  // Get insight icon
+  const getInsightIcon = (type) => {
+    switch (type) {
+      case 'success': return <CheckCircle size={18} className="text-emerald-500 flex-shrink-0" />
+      case 'warning': return <AlertTriangle size={18} className="text-yellow-500 flex-shrink-0" />
+      case 'danger': return <AlertCircle size={18} className="text-red-500 flex-shrink-0" />
+      default: return <Info size={18} className="text-blue-500 flex-shrink-0" />
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className={`flex items-center justify-center h-full ${styles.bg}`}>
+        <div className="text-center">
+          <Zap className={`w-12 h-12 mx-auto mb-4 animate-pulse ${theme === 'dark' ? 'text-blue-500' : 'text-[#4B3621]'}`} />
+          <p className={`text-sm font-bold ${theme === 'dark' ? 'text-gray-400' : 'text-[#654321]'}`}>Loading Analytics...</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
-    <div className={`flex flex-col gap-6 h-full w-full animate-fade-in p-6 overflow-y-auto custom-scrollbar ${styles.bg}`}>
+    <div className={`flex flex-col gap-6 h-full w-full p-6 overflow-y-auto custom-scrollbar ${styles.bg}`}>
 
-      {/* 1. STATS ROW */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 shrink-0">
-        {/* BALANCE */}
+      {/* 1. BALANCE, INCOME, EXPENSE (NOW AT TOP!) */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className={getCardStyle('blue')}>
-          <div className="flex justify-between items-center relative z-10">
+          <div className="flex justify-between items-center">
             <div>
-              <p className={`text-[11px] font-bold uppercase tracking-[0.2em] mb-1.5 ${theme === 'dark' ? 'text-blue-400 drop-shadow-[0_0_5px_#3b82f6]' : 'text-[#654321]/70'}`}>Total Balance</p>
-              <h3 className={`text-2xl font-black tracking-tight ${theme === 'dark' ? 'text-white drop-shadow-[0_0_10px_rgba(59,130,246,0.6)]' : 'text-[#4B3621]'}`}>
+              <p className={`text-xs font-bold uppercase tracking-wider mb-2 ${theme === 'dark' ? 'text-blue-400' : 'text-[#654321]/70'}`}>
+                Balance
+              </p>
+              <h3 className={`text-3xl font-black ${theme === 'dark' ? 'text-white' : 'text-[#4B3621]'}`}>
                 {currency}{formatIndianNumber(balance)}
               </h3>
             </div>
-            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center border transition duration-500 ${theme === 'dark' ? 'bg-blue-900/20 border-blue-500/40 shadow-[0_0_15px_#3b82f6] group-hover:scale-110' : 'bg-[#F5F5DC] border-[#654321]/30 text-[#4B3621]'}`}>
-              <Wallet className={theme === 'dark' ? 'text-blue-500' : 'text-[#4B3621]'} size={28} />
+            <div className={`w-16 h-16 rounded-2xl flex items-center justify-center ${theme === 'dark' ? 'bg-blue-500/20' : 'bg-[#F5F5DC]'
+              }`}>
+              <Wallet className={theme === 'dark' ? 'text-blue-500' : 'text-[#4B3621]'} size={32} />
             </div>
           </div>
         </div>
 
-
-        {/* INCOME */}
         <div className={getCardStyle('green')}>
-          <div className="flex justify-between items-center relative z-10">
+          <div className="flex justify-between items-center">
             <div>
-              <p className={`text-[11px] font-bold uppercase tracking-[0.2em] mb-1.5 ${theme === 'dark' ? 'text-emerald-400 drop-shadow-[0_0_5px_#10b981]' : 'text-[#654321]/70'}`}>Total Income</p>
-              <h3 className={`text-2xl font-black tracking-tight ${theme === 'dark' ? 'text-emerald-400 drop-shadow-[0_0_10px_#10b981]' : 'text-[#4B3621]'}`}>
+              <p className={`text-xs font-bold uppercase tracking-wider mb-2 ${theme === 'dark' ? 'text-emerald-400' : 'text-[#654321]/70'}`}>
+                Income
+              </p>
+              <h3 className={`text-3xl font-black ${theme === 'dark' ? 'text-emerald-400' : 'text-[#4B3621]'}`}>
                 +{currency}{formatIndianNumber(totalIncome)}
               </h3>
-
             </div>
-            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center border transition duration-500 ${theme === 'dark' ? 'bg-emerald-900/20 border-emerald-500/40 shadow-[0_0_15px_#10b981] group-hover:scale-110' : 'bg-[#F5F5DC] border-[#654321]/30 text-[#4B3621]'}`}>
-              <TrendingUp className={theme === 'dark' ? 'text-emerald-500' : 'text-[#4B3621]'} size={28} />
+            <div className={`w-16 h-16 rounded-2xl flex items-center justify-center ${theme === 'dark' ? 'bg-emerald-500/20' : 'bg-[#F5F5DC]'
+              }`}>
+              <TrendingUp className={theme === 'dark' ? 'text-emerald-500' : 'text-[#4B3621]'} size={32} />
             </div>
           </div>
         </div>
 
-
-        {/* EXPENSE */}
         <div className={getCardStyle('red')}>
-          <div className="flex justify-between items-center relative z-10">
+          <div className="flex justify-between items-center">
             <div>
-              <p className={`text-[11px] font-bold uppercase tracking-[0.2em] mb-1.5 ${theme === 'dark' ? 'text-red-400 drop-shadow-[0_0_5px_#ef4444]' : 'text-[#654321]/70'}`}>Total Expenses</p>
-              <h3 className={`text-2xl font-black tracking-tight ${theme === 'dark' ? 'text-red-500 drop-shadow-[0_0_10px_#ef4444]' : 'text-[#4B3621]'}`}>
+              <p className={`text-xs font-bold uppercase tracking-wider mb-2 ${theme === 'dark' ? 'text-red-400' : 'text-[#654321]/70'}`}>
+                Expenses
+              </p>
+              <h3 className={`text-3xl font-black ${theme === 'dark' ? 'text-red-500' : 'text-[#4B3621]'}`}>
                 -{currency}{formatIndianNumber(totalExpense)}
               </h3>
             </div>
-            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center border transition duration-500 ${theme === 'dark' ? 'bg-red-900/20 border-red-500/40 shadow-[0_0_15px_#ef4444] group-hover:scale-110' : 'bg-[#F5F5DC] border-[#654321]/30 text-[#4B3621]'}`}>
-              <TrendingDown className={theme === 'dark' ? 'text-red-500' : 'text-[#4B3621]'} size={28} />
+            <div className={`w-16 h-16 rounded-2xl flex items-center justify-center ${theme === 'dark' ? 'bg-red-500/20' : 'bg-[#F5F5DC]'
+              }`}>
+              <TrendingDown className={theme === 'dark' ? 'text-red-500' : 'text-[#4B3621]'} size={32} />
             </div>
           </div>
         </div>
       </div>
 
+      {/* 2. FINANCIAL HEALTH SCORE */}
+      {healthScore ? (
+        <div className={getCardStyle('purple')}>
+          <div className="flex flex-col lg:flex-row items-center gap-8">
+            {/* Score Circle */}
+            <div className="relative flex-shrink-0">
+              <svg className="w-40 h-40 transform -rotate-90">
+                <circle
+                  cx="80"
+                  cy="80"
+                  r="70"
+                  stroke={theme === 'dark' ? '#1e293b' : '#D2B48C'}
+                  strokeWidth="12"
+                  fill="none"
+                />
+                <circle
+                  cx="80"
+                  cy="80"
+                  r="70"
+                  stroke={getHealthColor(healthScore.score)}
+                  strokeWidth="12"
+                  fill="none"
+                  strokeDasharray={`${(healthScore.score / 100) * 439.82} 439.82`}
+                  strokeLinecap="round"
+                  className="transition-all duration-1000"
+                  style={{ filter: theme === 'dark' ? `drop-shadow(0 0 8px ${getHealthColor(healthScore.score)})` : 'none' }}
+                />
+              </svg>
+              <div className="absolute inset-0 flex flex-col items-center justify-center">
+                <span className={`text-4xl font-black`} style={{ color: getHealthColor(healthScore.score) }}>
+                  {healthScore.score}
+                </span>
+                <span className={`text-sm font-bold ${theme === 'dark' ? 'text-gray-500' : 'text-[#654321]/60'}`}>
+                  / 100
+                </span>
+              </div>
+            </div>
 
-      {/* 2. CHARTS ROW (Balanced Height) */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-80 shrink-0">
+            {/* Breakdown */}
+            <div className="flex-1 w-full">
+              <h2 className={`text-2xl font-black mb-6 ${theme === 'dark' ? 'text-white' : 'text-[#4B3621]'}`}>
+                Financial Health Score
+              </h2>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {Object.entries(healthScore.breakdown).map(([key, value]) => (
+                  <div
+                    key={key}
+                    className={`p-4 rounded-xl ${theme === 'dark' ? 'bg-white/5 border border-white/10' : 'bg-[#F5F5DC] border border-[#654321]/20'}`}
+                  >
+                    <p className={`text-xs font-bold uppercase mb-2 ${theme === 'dark' ? 'text-gray-400' : 'text-[#654321]/70'}`}>
+                      {key}
+                    </p>
+                    <p className={`text-2xl font-black ${theme === 'dark' ? 'text-white' : 'text-[#4B3621]'}`}>
+                      {value}<span className="text-sm">/25</span>
+                    </p>
+                  </div>
+                ))}
+              </div>
 
-        {/* MAIN CHART */}
-        <div className={`lg:col-span-2 ${getCardStyle('blue')}`}>
-          <h3 className={`font-bold text-sm mb-4 flex items-center gap-3 tracking-widest uppercase ${theme === 'dark' ? 'text-white drop-shadow-[0_0_5px_#3b82f6]' : 'text-[#4B3621]'}`}>
-            <Activity size={16} className={theme === 'dark' ? "text-blue-500" : "text-[#4B3621]"} />
-            Financial Performance
-          </h3>
-          <div className="flex-1 w-full min-h-0">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={performanceData} barGap={6}>
-                <defs>
-                  <linearGradient id="incomeGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#3b82f6" stopOpacity={1} />
-                    <stop offset="100%" stopColor="#2563eb" stopOpacity={0.2} />
-                  </linearGradient>
-                  <linearGradient id="expenseGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#ef4444" stopOpacity={1} />
-                    <stop offset="100%" stopColor="#b91c1c" stopOpacity={0.2} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke={theme === 'dark' ? '#1e3a8a' : '#D2B48C'} strokeOpacity={0.4} vertical={false} />
-                <Tooltip content={<CustomTooltip />} cursor={{ fill: '#ffffff05' }} />
-                <Bar dataKey="income" name="Income" fill={theme === 'dark' ? "url(#incomeGradient)" : "#654321"} radius={[4, 4, 0, 0]} barSize={12} className={theme === 'dark' ? 'drop-shadow-[0_0_8px_#3b82f6]' : ''} />
-                <Bar dataKey="expense" name="Expense" fill={theme === 'dark' ? "url(#expenseGradient)" : "#4B3621"} radius={[4, 4, 0, 0]} barSize={12} className={theme === 'dark' ? 'drop-shadow-[0_0_8px_#ef4444]' : ''} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-
-        {/* PIE CHART */}
-        <div className={getCardStyle('blue')}>
-          <h3 className={`font-bold text-sm mb-2 tracking-widest uppercase ${theme === 'dark' ? 'text-white' : 'text-[#4B3621]'}`}>Expense Breakdown</h3>
-          <div className="flex-1 w-full min-h-0 relative">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={expensePieData}
-                  innerRadius={60}
-                  outerRadius={80}
-                  paddingAngle={6}
-                  dataKey="value"
-                  stroke="none"
-                >
-                  {expensePieData.map((_, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} className={theme === 'dark' ? 'drop-shadow-[0_0_5px_rgba(0,0,0,0.8)]' : ''} />
-                  ))}
-                </Pie>
-                <Tooltip content={<CustomTooltip />} />
-                <Legend verticalAlign="bottom" height={36} iconType="circle" formatter={(value) => <span className={`text-[10px] ml-1 font-bold ${theme === 'dark' ? 'text-gray-400' : 'text-[#654321]/70'}`}>{value.toUpperCase()}</span>} />
-              </PieChart>
-            </ResponsiveContainer>
-
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none pb-8">
-              <div className="text-center">
-                <p className={`text-[10px] font-bold uppercase tracking-widest ${theme === 'dark' ? 'text-blue-500 drop-shadow-[0_0_5px_#3b82f6]' : 'text-[#654321]/70'}`}>Total</p>
-                <p className={`text-xs font-black ${theme === 'dark' ? 'text-white' : 'text-[#4B3621]'}`}>SPEND</p>
+              {/* Metrics Summary */}
+              <div className={`mt-4 p-4 rounded-xl ${theme === 'dark' ? 'bg-white/5' : 'bg-[#F5F5DC]'}`}>
+                <div className="grid grid-cols-3 gap-4 text-center">
+                  <div>
+                    <p className={`text-xs mb-1 ${theme === 'dark' ? 'text-gray-400' : 'text-[#654321]/70'}`}>Savings Rate</p>
+                    <p className={`text-lg font-black ${theme === 'dark' ? 'text-emerald-400' : 'text-[#4B3621]'}`}>
+                      {healthScore.metrics.savingsRate}%
+                    </p>
+                  </div>
+                  <div>
+                    <p className={`text-xs mb-1 ${theme === 'dark' ? 'text-gray-400' : 'text-[#654321]/70'}`}>Monthly Income</p>
+                    <p className={`text-lg font-black ${theme === 'dark' ? 'text-white' : 'text-[#4B3621]'}`}>
+                      {currency}{formatIndianNumber(parseFloat(healthScore.metrics.monthlyIncome))}
+                    </p>
+                  </div>
+                  <div>
+                    <p className={`text-xs mb-1 ${theme === 'dark' ? 'text-gray-400' : 'text-[#654321]/70'}`}>Savings</p>
+                    <p className={`text-lg font-black ${theme === 'dark' ? 'text-white' : 'text-[#4B3621]'}`}>
+                      {currency}{formatIndianNumber(parseFloat(healthScore.metrics.monthlySavings))}
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
+      ) : (
+        <div className={`${getCardStyle('purple')} text-center py-8`}>
+          <Info className={`w-12 h-12 mx-auto mb-3 ${theme === 'dark' ? 'text-purple-500' : 'text-[#4B3621]'}`} />
+          <h3 className={`text-lg font-bold ${theme === 'dark' ? 'text-white' : 'text-[#4B3621]'}`}>
+            Add More Transactions
+          </h3>
+          <p className={`text-sm mt-2 ${theme === 'dark' ? 'text-gray-400' : 'text-[#654321]/70'}`}>
+            We need at least a few transactions to calculate your financial health score
+          </p>
+        </div>
+      )}
 
-
-      {/* 3. BOTTOM ROW (Balanced Height) */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 min-h-[300px] shrink-0">
-
-        {/* TRANSACTIONS */}
+      {/* 3. SMART INSIGHTS */}
+      {insights.length > 0 ? (
         <div className={getCardStyle('blue')}>
-          <div className="flex justify-between items-center mb-4">
-            <h3 className={`font-bold text-sm tracking-widest uppercase ${theme === 'dark' ? 'text-white' : 'text-[#4B3621]'}`}>Recent Transactions</h3>
-            <button
-              onClick={() => openModal('expense')}
-              className={`text-[10px] font-bold px-4 py-2 rounded-lg transition duration-300 ${theme === 'dark' ? 'bg-blue-600 text-white hover:bg-blue-500 shadow-[0_0_15px_#3b82f6]' : 'bg-[#F5F5DC] text-[#4B3621] hover:bg-[#F5F5DC]/80 border border-[#654321]/30'}`}
-            >
-              + QUICK ADD
-            </button>
-          </div>
-          <div className="flex-1 overflow-y-auto pr-2 space-y-3 custom-scrollbar">
-            {transactions.slice(-5).reverse().map((t, index) => (
-              <div key={t.id || t._id || index} className={`flex justify-between items-center p-3 rounded-xl transition border border-transparent group ${theme === 'dark' ? 'hover:bg-white/5 hover:border-blue-500/30' : 'hover:bg-[#F5F5DC]/50 hover:border-[#654321]/20'}`}>
-                <div className="flex items-center gap-4">
-                  <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${t.type === 'income' ? (theme === 'dark' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-[#F5F5DC] border border-[#654321]/30 text-[#4B3621]') : (theme === 'dark' ? 'bg-red-500/10 text-red-500' : 'bg-[#F5F5DC] border border-[#654321]/30 text-[#4B3621]')} ${theme === 'dark' ? 'shadow-[0_0_10px_rgba(0,0,0,0.5)]' : ''}`}>
-                    {t.type === 'income' ? <ArrowUpRight size={16} /> : <ArrowDownRight size={16} />}
-                  </div>
-                  <div>
-                    <p className={`font-bold text-xs transition uppercase tracking-wide ${theme === 'dark' ? 'text-gray-200 group-hover:text-white' : 'text-[#4B3621]'}`}>{t.category}</p>
-                    <p className={`text-[10px] ${theme === 'dark' ? 'text-gray-500' : 'text-[#654321]/60'}`}>{t.description || '-'}</p>
-                  </div>
+          <h3 className={`font-bold text-lg mb-4 flex items-center gap-2 ${theme === 'dark' ? 'text-white' : 'text-[#4B3621]'}`}>
+            <Zap size={20} />
+            SMART INSIGHTS
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {insights.map((insight, i) => (
+              <div
+                key={i}
+                className={`p-4 rounded-xl border transition-all ${theme === 'dark'
+                    ? 'bg-white/5 border-white/10 hover:border-blue-500/50 hover:bg-white/10'
+                    : 'bg-[#F5F5DC] border-[#654321]/20 hover:border-[#654321]/40'
+                  }`}
+              >
+                <div className="flex items-start gap-3">
+                  {getInsightIcon(insight.type)}
+                  <p className={`text-sm font-medium leading-relaxed ${theme === 'dark' ? 'text-gray-300' : 'text-[#4B3621]'}`}>
+                    {insight.message}
+                  </p>
                 </div>
-                <span className={`font-bold text-sm ${t.type === 'income' ? (theme === 'dark' ? 'text-emerald-400 drop-shadow-[0_0_5px_#10b981]' : 'text-[#4B3621]') : (theme === 'dark' ? 'text-white' : 'text-[#4B3621]')}`}>
-                  {t.type === 'income' ? '+' : '-'}{currency}{formatIndianNumber(Math.abs(parseFloat(t.amount || 0)))}
-                </span>
               </div>
             ))}
           </div>
         </div>
+      ) : null}
 
+      {/* 4. CASH FLOW FORECAST */}
+      {cashflow && cashflow.timeline && cashflow.timeline.length > 0 ? (
+        <div className={getCardStyle('purple')}>
+          <h3 className={`font-bold text-lg mb-4 flex items-center gap-2 ${theme === 'dark' ? 'text-white' : 'text-[#4B3621]'}`}>
+            <Activity size={20} />
+            CASH FLOW FORECAST
+          </h3>
 
-        {/* BUDGET HEALTH */}
-        <div className={getCardStyle('blue')}>
-          <h3 className={`font-bold text-sm mb-4 tracking-widest uppercase ${theme === 'dark' ? 'text-white' : 'text-[#4B3621]'}`}>Budget Health</h3>
-          <div className="flex-1 overflow-y-auto pr-2 space-y-5 custom-scrollbar">
-            {budgets.map((b, index) => {
-              const spent = expenses
-                .filter(e => e.category === b.category)
-                .reduce((sum, e) => sum + parseFloat(e.amount || 0), 0)
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div className={`p-5 rounded-xl ${theme === 'dark' ? 'bg-white/5 border border-white/10' : 'bg-[#F5F5DC] border border-[#654321]/20'}`}>
+              <p className={`text-xs font-bold uppercase mb-2 ${theme === 'dark' ? 'text-gray-400' : 'text-[#654321]/70'}`}>
+                Month-End Prediction
+              </p>
+              <p className={`text-2xl font-black ${theme === 'dark' ? 'text-white' : 'text-[#4B3621]'}`}>
+                {currency}{formatIndianNumber(cashflow.predictions.predictedEndBalance)}
+              </p>
+            </div>
 
-              const limit = parseFloat(b.limit || 1)
-              const percent = Math.min((spent / limit) * 100, 100)
+            <div className={`p-5 rounded-xl ${theme === 'dark' ? 'bg-white/5 border border-white/10' : 'bg-[#F5F5DC] border border-[#654321]/20'}`}>
+              <p className={`text-xs font-bold uppercase mb-2 ${theme === 'dark' ? 'text-gray-400' : 'text-[#654321]/70'}`}>
+                Daily Avg Spending
+              </p>
+              <p className={`text-2xl font-black ${theme === 'dark' ? 'text-white' : 'text-[#4B3621]'}`}>
+                {currency}{formatIndianNumber(cashflow.predictions.dailyAvgSpending)}
+              </p>
+            </div>
 
-              let color = percent >= 100 ? (theme === 'dark' ? "bg-red-500" : "bg-[#4B3621]") : percent > 80 ? (theme === 'dark' ? "bg-yellow-500" : "bg-[#654321]") : (theme === 'dark' ? "bg-blue-500" : "bg-[#8B4513]")
-              let shadowColor = percent >= 100 ? "#ef4444" : percent > 80 ? "#f59e0b" : "#3b82f6"
-              let textColor = percent >= 100 ? (theme === 'dark' ? "text-red-400" : "text-[#4B3621]") : percent > 80 ? (theme === 'dark' ? "text-yellow-400" : "text-[#654321]") : (theme === 'dark' ? "text-blue-400" : "text-[#8B4513]")
+            <div className={`p-5 rounded-xl ${theme === 'dark' ? 'bg-white/5 border border-white/10' : 'bg-[#F5F5DC] border border-[#654321]/20'}`}>
+              <p className={`text-xs font-bold uppercase mb-2 ${theme === 'dark' ? 'text-gray-400' : 'text-[#654321]/70'}`}>
+                Days Remaining
+              </p>
+              <p className={`text-2xl font-black ${theme === 'dark' ? 'text-white' : 'text-[#4B3621]'}`}>
+                {cashflow.predictions.daysRemaining}
+              </p>
+            </div>
+          </div>
 
-              return (
-                <div key={b.id || b._id || index}>
-                  <div className="flex justify-between text-[11px] mb-1.5">
-                    <span className={`font-bold uppercase tracking-wider ${theme === 'dark' ? 'text-gray-300' : 'text-[#4B3621]'}`}>{b.category}</span>
-                    <span className={`font-bold ${textColor} ${theme === 'dark' ? `drop-shadow-[0_0_5px_${shadowColor}]` : ''}`}>{currency}{formatIndianNumber(spent)} / {currency}{formatIndianNumber(b.limit)}</span>
-                  </div>
-                  <div className={`w-full h-2.5 rounded-full overflow-hidden ${theme === 'dark' ? 'bg-white/5 border border-white/10' : 'bg-[#FAF9F6] border border-[#D2B48C]/30'}`}>
-                    <div
-                      className={`h-full rounded-full transition-all duration-1000 ${color}`}
-                      style={{
-                        width: `${percent}%`,
-                        boxShadow: theme === 'dark' ? `0 0 12px ${shadowColor}` : 'none'
-                      }}
-                    ></div>
-                  </div>
-                </div>
-              )
-            })}
+          <div className="h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={cashflow.timeline}>
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  stroke={theme === 'dark' ? '#1e3a8a' : '#D2B48C'}
+                  strokeOpacity={0.3}
+                />
+                <XAxis
+                  dataKey="label"
+                  stroke={theme === 'dark' ? '#6b7280' : '#654321'}
+                  style={{ fontSize: '12px' }}
+                />
+                <YAxis
+                  stroke={theme === 'dark' ? '#6b7280' : '#654321'}
+                  style={{ fontSize: '12px' }}
+                />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: theme === 'dark' ? '#000' : '#FFF8F0',
+                    border: `1px solid ${theme === 'dark' ? '#3b82f6' : '#654321'}`,
+                    borderRadius: '8px'
+                  }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="balance"
+                  stroke={theme === 'dark' ? '#8b5cf6' : '#4B3621'}
+                  strokeWidth={3}
+                  dot={{ fill: theme === 'dark' ? '#8b5cf6' : '#4B3621', r: 5 }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
           </div>
         </div>
+      ) : null}
+
+      {/* 5. BUDGET INTELLIGENCE & SPENDING PATTERNS */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+        {/* Budget Intelligence */}
+        {budgetIntelligence && budgetIntelligence.budgets && budgetIntelligence.budgets.length > 0 ? (
+          <div className={getCardStyle('blue')}>
+            <h3 className={`font-bold text-lg mb-4 ${theme === 'dark' ? 'text-white' : 'text-[#4B3621]'}`}>
+              BUDGET INTELLIGENCE
+            </h3>
+            <div className="space-y-4">
+              {budgetIntelligence.budgets.slice(0, 5).map((budget, i) => (
+                <div
+                  key={i}
+                  className={`p-4 rounded-xl ${theme === 'dark' ? 'bg-white/5 border border-white/10' : 'bg-[#F5F5DC] border border-[#654321]/20'}`}
+                >
+                  <div className="flex justify-between items-start mb-3">
+                    <p className={`font-bold text-base ${theme === 'dark' ? 'text-white' : 'text-[#4B3621]'}`}>
+                      {budget.category}
+                    </p>
+                    <span className={`text-xs font-bold px-3 py-1 rounded-full ${budget.status === 'exceeded' || budget.status === 'danger'
+                        ? 'bg-red-500/20 text-red-500'
+                        : budget.status === 'warning'
+                          ? 'bg-yellow-500/20 text-yellow-500'
+                          : 'bg-emerald-500/20 text-emerald-500'
+                      }`}>
+                      {budget.percentage.toFixed(0)}%
+                    </span>
+                  </div>
+
+                  <div className="flex justify-between text-sm mb-2">
+                    <span className={theme === 'dark' ? 'text-gray-400' : 'text-[#654321]/70'}>
+                      {currency}{formatIndianNumber(budget.spent)} / {currency}{formatIndianNumber(budget.limit)}
+                    </span>
+                    <span className={`font-bold ${theme === 'dark' ? 'text-gray-300' : 'text-[#4B3621]'}`}>
+                      {currency}{formatIndianNumber(budget.dailyBurnRate)}/day
+                    </span>
+                  </div>
+
+                  <div className={`w-full h-3 rounded-full overflow-hidden mb-3 ${theme === 'dark' ? 'bg-white/10' : 'bg-white'}`}>
+                    <div
+                      className={`h-full transition-all duration-1000 ${budget.status === 'exceeded' || budget.status === 'danger' ? 'bg-red-500' :
+                          budget.status === 'warning' ? 'bg-yellow-500' : 'bg-blue-500'
+                        }`}
+                      style={{ width: `${Math.min(budget.percentage, 100)}%` }}
+                    />
+                  </div>
+
+                  <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-[#654321]/70'}`}>
+                    {budget.message}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div className={`${getCardStyle('blue')} text-center py-8`}>
+            <Info className={`w-12 h-12 mx-auto mb-3 ${theme === 'dark' ? 'text-blue-500' : 'text-[#4B3621]'}`} />
+            <h3 className={`text-lg font-bold ${theme === 'dark' ? 'text-white' : 'text-[#4B3621]'}`}>
+              Create Budgets
+            </h3>
+            <p className={`text-sm mt-2 ${theme === 'dark' ? 'text-gray-400' : 'text-[#654321]/70'}`}>
+              Set up budgets to get intelligent spending insights
+            </p>
+          </div>
+        )}
+
+        {/* Spending Patterns */}
+        {patterns && patterns.categoryComparison && patterns.categoryComparison.length > 0 ? (
+          <div className={getCardStyle('blue')}>
+            <h3 className={`font-bold text-lg mb-4 ${theme === 'dark' ? 'text-white' : 'text-[#4B3621]'}`}>
+              SPENDING TRENDS
+            </h3>
+            <div className="space-y-3">
+              {patterns.categoryComparison.slice(0, 6).map((cat, i) => (
+                <div
+                  key={i}
+                  className={`p-4 rounded-xl ${theme === 'dark' ? 'bg-white/5 border border-white/10' : 'bg-[#F5F5DC] border border-[#654321]/20'}`}
+                >
+                  <div className="flex justify-between items-center mb-3">
+                    <p className={`font-bold text-sm ${theme === 'dark' ? 'text-white' : 'text-[#4B3621]'}`}>
+                      {cat.category}
+                    </p>
+                    <div className="flex items-center gap-1">
+                      {cat.changeVsLast > 0 ? (
+                        <ArrowUpRight size={16} className="text-red-500" />
+                      ) : (
+                        <ArrowDownRight size={16} className="text-emerald-500" />
+                      )}
+                      <span className={`text-sm font-bold ${cat.changeVsLast > 10 ? 'text-red-500' :
+                          cat.changeVsLast < -10 ? 'text-emerald-500' :
+                            theme === 'dark' ? 'text-gray-400' : 'text-[#654321]/70'
+                        }`}>
+                        {cat.changeVsLast > 0 ? '+' : ''}{cat.changeVsLast.toFixed(0)}%
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-2 text-xs">
+                    <div>
+                      <p className={theme === 'dark' ? 'text-gray-500' : 'text-[#654321]/60'}>Current</p>
+                      <p className={`font-bold ${theme === 'dark' ? 'text-white' : 'text-[#4B3621]'}`}>
+                        {currency}{formatIndianNumber(cat.currentMonth)}
+                      </p>
+                    </div>
+                    <div>
+                      <p className={theme === 'dark' ? 'text-gray-500' : 'text-[#654321]/60'}>Last</p>
+                      <p className={`font-bold ${theme === 'dark' ? 'text-white' : 'text-[#4B3621]'}`}>
+                        {currency}{formatIndianNumber(cat.lastMonth)}
+                      </p>
+                    </div>
+                    <div>
+                      <p className={theme === 'dark' ? 'text-gray-500' : 'text-[#654321]/60'}>Avg</p>
+                      <p className={`font-bold ${theme === 'dark' ? 'text-white' : 'text-[#4B3621]'}`}>
+                        {currency}{formatIndianNumber(cat.threeMonthAvg)}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div className={`${getCardStyle('blue')} text-center py-8`}>
+            <Info className={`w-12 h-12 mx-auto mb-3 ${theme === 'dark' ? 'text-blue-500' : 'text-[#4B3621]'}`} />
+            <h3 className={`text-lg font-bold ${theme === 'dark' ? 'text-white' : 'text-[#4B3621]'}`}>
+              Track Spending
+            </h3>
+            <p className={`text-sm mt-2 ${theme === 'dark' ? 'text-gray-400' : 'text-[#654321]/70'}`}>
+              Add more transactions to see spending trends
+            </p>
+          </div>
+        )}
       </div>
+
+      {/* 6. RECENT TRANSACTIONS */}
+      <div className={getCardStyle('blue')}>
+        <div className="flex justify-between items-center mb-4">
+          <h3 className={`font-bold text-lg ${theme === 'dark' ? 'text-white' : 'text-[#4B3621]'}`}>
+            RECENT TRANSACTIONS
+          </h3>
+          <button
+            onClick={() => openModal('expense')}
+            className={`text-sm font-bold px-5 py-2.5 rounded-xl transition ${theme === 'dark'
+                ? 'bg-blue-600 hover:bg-blue-500 text-white shadow-[0_0_20px_rgba(59,130,246,0.3)]'
+                : 'bg-[#F5F5DC] hover:bg-[#F5F5DC]/80 text-[#4B3621] border-2 border-[#654321]/30'
+              }`}
+          >
+            + ADD
+          </button>
+        </div>
+        <div className="space-y-2">
+          {transactions
+            .sort((a, b) => new Date(b.date) - new Date(a.date))
+            .slice(0, 5)
+            .map((t, i) => (
+              <div
+                key={i}
+                className={`flex justify-between items-center p-4 rounded-xl transition ${theme === 'dark'
+                    ? 'bg-white/5 hover:bg-white/10 border border-white/10'
+                    : 'bg-[#F5F5DC] hover:bg-[#F5F5DC]/80 border border-[#654321]/20'
+                  }`}
+              >
+                <div className="flex items-center gap-4">
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${t.type === 'income'
+                      ? (theme === 'dark' ? 'bg-emerald-500/20 text-emerald-500' : 'bg-emerald-100 text-emerald-700')
+                      : (theme === 'dark' ? 'bg-red-500/20 text-red-500' : 'bg-red-100 text-red-700')
+                    }`}>
+                    {t.type === 'income' ? <ArrowUpRight size={18} /> : <ArrowDownRight size={18} />}
+                  </div>
+                  <div>
+                    <p className={`text-sm font-bold ${theme === 'dark' ? 'text-white' : 'text-[#4B3621]'}`}>
+                      {t.category}
+                    </p>
+                    <p className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-[#654321]/60'}`}>
+                      {t.description || 'No description'} • {new Date(t.date).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' })}
+                    </p>
+                  </div>
+                </div>
+                <span className={`text-base font-black ${t.type === 'income'
+                    ? (theme === 'dark' ? 'text-emerald-400' : 'text-emerald-700')
+                    : (theme === 'dark' ? 'text-red-500' : 'text-red-700')  // ✅ NOW RED!
+                  }`}>
+                  {t.type === 'income' ? '+' : '-'}{currency}{formatIndianNumber(parseFloat(t.amount))}
+                </span>
+              </div>
+            ))}
+        </div>
+      </div>
+
+
     </div>
   )
 }
-
 
 export default Dashboard

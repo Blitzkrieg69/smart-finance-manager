@@ -5,6 +5,7 @@ import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts'
 import { useTheme } from '../context/ThemeContext'
 import { formatIndianNumber } from '../utils/formatNumber'
 
+
 const Investments = ({ investments = [], openModal, handleDelete, handleEdit, currency, exchangeRate = 1 }) => {
     const { theme, styles } = useTheme()
 
@@ -55,6 +56,14 @@ const Investments = ({ investments = [], openModal, handleDelete, handleEdit, cu
         (inv.exchange || '').toLowerCase().includes(searchTerm.toLowerCase())
     )
 
+    // PORTFOLIO-WIDE STATS (ALL INVESTMENTS - MATCHES ANALYTICS)
+    const portfolioInvested = investments.reduce((sum, i) => sum + (parseFloat(i.quantity || 0) * convert(i.buy_price, i.currency)), 0)
+    const portfolioValue = investments.reduce((sum, i) => sum + (parseFloat(i.quantity || 0) * convert(i.current_price, i.currency)), 0)
+    const portfolioProfitLoss = portfolioValue - portfolioInvested
+    const portfolioIsProfit = portfolioProfitLoss >= 0
+    const portfolioROI = portfolioInvested > 0 ? (portfolioProfitLoss / portfolioInvested) * 100 : 0
+
+    // FILTERED VIEW STATS (VISIBLE INVESTMENTS ONLY)
     const totalInvested = filteredInvestments.reduce((sum, i) => sum + (parseFloat(i.quantity || 0) * convert(i.buy_price, i.currency)), 0)
     const currentValue = filteredInvestments.reduce((sum, i) => sum + (parseFloat(i.quantity || 0) * convert(i.current_price, i.currency)), 0)
     const profitLoss = currentValue - totalInvested
@@ -155,10 +164,10 @@ const Investments = ({ investments = [], openModal, handleDelete, handleEdit, cu
                         </div>
                         <p className={`text-[10px] font-bold uppercase tracking-[0.2em] mb-1 ${theme === 'dark' ? 'text-purple-400 drop-shadow-[0_0_5px_rgba(168,85,247,0.8)]' : 'text-[#654321]/70'}`}>Current Value</p>
                         <h3 className={`text-2xl font-black mt-1 tracking-tight ${theme === 'dark' ? 'text-white drop-shadow-[0_0_10px_#a855f7]' : 'text-[#4B3621]'}`}>
-                            {currency}{formatIndianNumber(currentValue)}
+                            {currency}{formatIndianNumber(portfolioValue)}
                         </h3>
                         <p className={`text-[10px] mt-4 flex items-center gap-2 uppercase tracking-widest font-bold ${theme === 'dark' ? 'text-gray-400' : 'text-[#654321]/70'}`}>
-                            <Layers size={12} className={theme === 'dark' ? 'text-purple-500' : 'text-[#654321]'} /> {filteredInvestments.length} Active Assets
+                            <Layers size={12} className={theme === 'dark' ? 'text-purple-500' : 'text-[#654321]'} /> {investments.length} Active Assets
                         </p>
                     </div>
 
@@ -166,30 +175,30 @@ const Investments = ({ investments = [], openModal, handleDelete, handleEdit, cu
                     <div className={getCardStyle('purple')}>
                         <p className={`text-[10px] font-bold uppercase tracking-[0.2em] mb-1 ${theme === 'dark' ? 'text-gray-400' : 'text-[#654321]/70'}`}>Total Invested</p>
                         <h3 className={`text-2xl font-black mt-1 ${theme === 'dark' ? 'text-gray-200 drop-shadow-[0_0_5px_rgba(255,255,255,0.3)]' : 'text-[#4B3621]'}`}>
-                            {currency}{formatIndianNumber(totalInvested)}
+                            {currency}{formatIndianNumber(portfolioInvested)}
                         </h3>
                         <div className={`w-full h-1.5 mt-6 rounded-full overflow-hidden ${theme === 'dark' ? 'bg-purple-900/20 border border-purple-500/20' : 'bg-[#FAF9F6] border border-[#C9A87C]/30'}`}>
                             <div className={`h-full rounded-full ${theme === 'dark' ? 'bg-purple-500 shadow-[0_0_10px_#a855f7]' : 'bg-[#654321]'}`} style={{ width: '100%' }}></div>
                         </div>
                     </div>
 
-                    {/* PROFIT/LOSS */}
-                    <div className={getCardStyle(isProfit ? 'profit' : 'loss')}>
+                    {/* PROFIT/LOSS - NOW USES PORTFOLIO VALUES */}
+                    <div className={getCardStyle(portfolioIsProfit ? 'profit' : 'loss')}>
                         <div>
                             <p className={`text-[10px] font-bold uppercase tracking-[0.2em] ${theme === 'dark' ? 'text-gray-400' : 'text-[#654321]/70'}`}>Total Profit / Loss</p>
                             <div className="flex items-baseline gap-3 mt-2">
-                                <h3 className={`text-2xl font-black tracking-tight ${theme === 'dark' ? (isProfit ? 'text-emerald-400 drop-shadow-[0_0_10px_#10b981]' : 'text-red-500 drop-shadow-[0_0_10px_#ef4444]') : 'text-[#4B3621]'}`}>
-                                    {isProfit ? '+' : ''}{currency}{formatIndianNumber(Math.abs(profitLoss))}
+                                <h3 className={`text-2xl font-black tracking-tight ${theme === 'dark' ? (portfolioIsProfit ? 'text-emerald-400 drop-shadow-[0_0_10px_#10b981]' : 'text-red-500 drop-shadow-[0_0_10px_#ef4444]') : 'text-[#4B3621]'}`}>
+                                    {portfolioIsProfit ? '+' : ''}{currency}{formatIndianNumber(Math.abs(portfolioProfitLoss))}
                                 </h3>
                             </div>
                         </div>
                         <div className="flex items-center gap-3 mt-4">
-                            <span className={`text-xs font-black px-3 py-1 rounded border ${theme === 'dark' ? 'shadow-[0_0_15px_currentColor]' : ''} ${isProfit ? (theme === 'dark' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/50' : 'bg-emerald-50 text-emerald-700 border-emerald-300') : (theme === 'dark' ? 'bg-red-500/10 text-red-400 border-red-500/50' : 'bg-red-50 text-red-700 border-red-300')}`}>
-                                {roi.toFixed(1)}% ROI
+                            <span className={`text-xs font-black px-3 py-1 rounded border ${theme === 'dark' ? 'shadow-[0_0_15px_currentColor]' : ''} ${portfolioIsProfit ? (theme === 'dark' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/50' : 'bg-emerald-50 text-emerald-700 border-emerald-300') : (theme === 'dark' ? 'bg-red-500/10 text-red-400 border-red-500/50' : 'bg-red-50 text-red-700 border-red-300')}`}>
+                                {portfolioROI.toFixed(1)}% ROI
                             </span>
-                            <div className={`flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider ${isProfit ? (theme === 'dark' ? 'text-emerald-500' : 'text-emerald-700') : (theme === 'dark' ? 'text-red-500' : 'text-red-700')}`}>
-                                {isProfit ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
-                                {isProfit ? "Growing" : "Down"}
+                            <div className={`flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider ${portfolioIsProfit ? (theme === 'dark' ? 'text-emerald-500' : 'text-emerald-700') : (theme === 'dark' ? 'text-red-500' : 'text-red-700')}`}>
+                                {portfolioIsProfit ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
+                                {portfolioIsProfit ? "Growing" : "Down"}
                             </div>
                         </div>
                     </div>
@@ -330,7 +339,7 @@ const Investments = ({ investments = [], openModal, handleDelete, handleEdit, cu
                             <div className="absolute inset-0 flex items-center justify-center pointer-events-none pb-4">
                                 <div className="text-center">
                                     <p className={`text-[10px] font-bold uppercase tracking-widest ${theme === 'dark' ? 'text-purple-500 drop-shadow-[0_0_5px_#a855f7]' : 'text-[#654321]/70'}`}>Total</p>
-                                    <p className={`font-black text-sm ${theme === 'dark' ? 'text-white drop-shadow-[0_0_5px_white]' : 'text-[#4B3621]'}`}>{currency}{formatIndianNumber(currentValue)}</p>
+                                    <p className={`font-black text-sm ${theme === 'dark' ? 'text-white drop-shadow-[0_0_5px_white]' : 'text-[#4B3621]'}`}>{currency}{formatIndianNumber(portfolioValue)}</p>
                                 </div>
                             </div>
                         </div>
@@ -342,7 +351,7 @@ const Investments = ({ investments = [], openModal, handleDelete, handleEdit, cu
                                         <div className={`w-2 h-2 rounded-full ${theme === 'dark' ? 'shadow-[0_0_8px_currentColor]' : ''}`} style={{ backgroundColor: COLORS[index % COLORS.length], color: COLORS[index % COLORS.length] }}></div>
                                         <span className={`font-bold transition ${theme === 'dark' ? 'text-gray-400 group-hover:text-white' : 'text-[#4B3621]'}`}>{entry.name}</span>
                                     </div>
-                                    <span className={`font-mono font-bold ${theme === 'dark' ? 'text-white drop-shadow-[0_0_5px_rgba(255,255,255,0.3)]' : 'text-[#4B3621]'}`}>{currentValue > 0 ? ((entry.value / currentValue) * 100).toFixed(0) : 0}%</span>
+                                    <span className={`font-mono font-bold ${theme === 'dark' ? 'text-white drop-shadow-[0_0_5px_rgba(255,255,255,0.3)]' : 'text-[#4B3621]'}`}>{portfolioValue > 0 ? ((entry.value / portfolioValue) * 100).toFixed(0) : 0}%</span>
                                 </div>
                             ))}
                         </div>

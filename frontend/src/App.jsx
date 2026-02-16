@@ -28,7 +28,7 @@ function AuthenticatedApp() {
   const [transactions, setTransactions] = useState([]);
   const [budgets, setBudgets] = useState([]);
   const [investments, setInvestments] = useState([]);
-  const [exchangeRate, setExchangeRate] = useState(84);
+  const [exchangeRate, setExchangeRate] = useState(91.5); // Default INR to USD rate
   const currency = '₹';
 
   // --- MODALS ---

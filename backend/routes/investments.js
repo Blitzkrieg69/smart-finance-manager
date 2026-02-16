@@ -29,7 +29,7 @@ router.get('/', requireAuth, async (req, res) => {
     try {
         const userId = req.session.userId;
         const investments = await Investment.find({ userId });
-        res.json({ investments, rate: 84 }); // rate hardcoded for now
+        res.json({ investments, rate: 91.5 }); // rate hardcoded for now
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -68,7 +68,7 @@ router.post('/refresh', requireAuth, async (req, res) => {
         if (ops.length) await Investment.bulkWrite(ops);
 
         const updated = await Investment.find({ userId });
-        res.json({ success: true, investments: updated, rate: 84 });
+        res.json({ success: true, investments: updated, rate: 91.5 });
     } catch (err) {
         console.error('Refresh error:', err.message);
         res.status(500).json({ error: 'Failed to refresh prices' });

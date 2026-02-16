@@ -7,13 +7,25 @@ const validateTransaction = (req, res, next) => {
     });
   }
 
-  if (typeof amount !== 'number' || amount <= 0) {
+  // Convert amount to number if it's a string
+  const numAmount = typeof amount === 'string' ? parseFloat(amount) : amount;
+  
+  if (isNaN(numAmount) || numAmount <= 0) {
     return res.status(400).json({ error: 'Amount must be a positive number' });
   }
 
-  if (!['Income', 'Expense'].includes(type)) {
-    return res.status(400).json({ error: 'Type must be Income or Expense' });
+  // Normalize amount to number
+  req.body.amount = numAmount;
+
+  // Accept both lowercase and capitalized type
+  const normalizedType = type.toLowerCase();
+  
+  if (!['income', 'expense'].includes(normalizedType)) {
+    return res.status(400).json({ error: 'Type must be income or expense' });
   }
+
+  // Ensure type is lowercase for database
+  req.body.type = normalizedType;
 
   next();
 };
@@ -62,7 +74,6 @@ const validateInvestment = (req, res, next) => {
   next();
 };
 
-
 const validateBudget = (req, res, next) => {
   const { category, limit } = req.body;
 
@@ -72,33 +83,70 @@ const validateBudget = (req, res, next) => {
     });
   }
 
-  if (typeof limit !== 'number' || limit <= 0) {
+  // Convert limit to number if it's a string
+  const numLimit = typeof limit === 'string' ? parseFloat(limit) : limit;
+
+  if (isNaN(numLimit) || numLimit <= 0) {
     return res.status(400).json({ error: 'Limit must be a positive number' });
   }
+
+  // Normalize limit to number
+  req.body.limit = numLimit;
 
   next();
 };
 
 const validateGoal = (req, res, next) => {
-  const { name, targetAmount } = req.body;
+  const { name, target_amount, targetAmount } = req.body;
 
-  if (!name || !targetAmount) {
+  // Accept both camelCase and snake_case
+  const finalTargetAmount = target_amount || targetAmount;
+
+  if (!name || !finalTargetAmount) {
     return res.status(400).json({
-      error: 'Missing required fields: name, targetAmount are required'
+      error: 'Missing required fields: name, target_amount are required'
     });
   }
 
-  if (typeof targetAmount !== 'number' || targetAmount <= 0) {
+  // Convert targetAmount to number if it's a string
+  const numTarget = typeof finalTargetAmount === 'string' ? parseFloat(finalTargetAmount) : finalTargetAmount;
+
+  if (isNaN(numTarget) || numTarget <= 0) {
     return res.status(400).json({ error: 'Target amount must be a positive number' });
+  }
+
+  // Normalize to snake_case for database
+  req.body.target_amount = numTarget;
+  
+  // Also normalize saved_amount if present (handle both camelCase and snake_case)
+  if (req.body.savedAmount !== undefined) {
+    const numSaved = typeof req.body.savedAmount === 'string' 
+      ? parseFloat(req.body.savedAmount) 
+      : req.body.savedAmount;
+    req.body.saved_amount = numSaved;
+    delete req.body.savedAmount; // Remove camelCase version
+  }
+  
+  if (req.body.saved_amount !== undefined) {
+    const numSaved = typeof req.body.saved_amount === 'string' 
+      ? parseFloat(req.body.saved_amount) 
+      : req.body.saved_amount;
+    req.body.saved_amount = numSaved;
   }
 
   next();
 };
+
 const validateExport = (req, res, next) => {
   const { type, start_date, end_date } = req.body;
 
-  if (type && !['Income', 'Expense', 'all'].includes(type)) {
-    return res.status(400).json({ error: 'Type must be Income, Expense, or all' });
+  // Accept both lowercase and capitalized type
+  if (type) {
+    const normalizedType = type.toLowerCase();
+    if (!['income', 'expense', 'all'].includes(normalizedType)) {
+      return res.status(400).json({ error: 'Type must be income, expense, or all' });
+    }
+    req.body.type = normalizedType;
   }
 
   if (start_date && isNaN(Date.parse(start_date))) {

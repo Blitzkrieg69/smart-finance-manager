@@ -9,7 +9,8 @@ import {
   X,
   Edit2,
   Trophy,
-  TrendingUp
+  TrendingUp,
+  Clock
 } from 'lucide-react'
 import CustomCalendar from '../components/CustomCalendar'
 import { useTheme } from '../context/ThemeContext'
@@ -40,6 +41,8 @@ const Goals = ({ currency, openModal }) => {
     target_amount: '',
     saved_amount: '',
     deadline: getToday(),
+    priority: 'medium',
+    description: '',
     color: '#ec4899'
   })
 
@@ -57,6 +60,8 @@ const Goals = ({ currency, openModal }) => {
     target_amount: toNumber(src?.target_amount),
     saved_amount: toNumber(src?.saved_amount),
     deadline: src?.deadline || getToday(),
+    priority: src?.priority || 'medium',
+    description: src?.description || '',
     color: src?.color || '#ec4899'
   })
 
@@ -108,6 +113,8 @@ const Goals = ({ currency, openModal }) => {
         target_amount: target === null || target === undefined ? '' : String(target),
         saved_amount: saved === null || saved === undefined ? '' : String(saved),
         deadline: goal.deadline || getToday(),
+        priority: goal.priority || 'medium',
+        description: goal.description || '',
         color: goal.color || '#ec4899'
       })
 
@@ -120,6 +127,8 @@ const Goals = ({ currency, openModal }) => {
         target_amount: '',
         saved_amount: '',
         deadline: getToday(),
+        priority: 'medium',
+        description: '',
         color: '#ec4899'
       })
       setDisplayTarget('')
@@ -140,7 +149,7 @@ const Goals = ({ currency, openModal }) => {
         setDisplayTarget(
           !isNaN(number)
             ? rawValue.split('.')[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',') +
-                (rawValue.includes('.') ? '.' + rawValue.split('.')[1] : '')
+            (rawValue.includes('.') ? '.' + rawValue.split('.')[1] : '')
             : rawValue
         )
       } else {
@@ -159,7 +168,7 @@ const Goals = ({ currency, openModal }) => {
         setDisplaySaved(
           !isNaN(number)
             ? rawValue.split('.')[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',') +
-                (rawValue.includes('.') ? '.' + rawValue.split('.')[1] : '')
+            (rawValue.includes('.') ? '.' + rawValue.split('.')[1] : '')
             : rawValue
         )
       } else {
@@ -178,7 +187,7 @@ const Goals = ({ currency, openModal }) => {
         setDisplayContribute(
           !isNaN(number)
             ? rawValue.split('.')[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',') +
-                (rawValue.includes('.') ? '.' + rawValue.split('.')[1] : '')
+            (rawValue.includes('.') ? '.' + rawValue.split('.')[1] : '')
             : rawValue
         )
       } else {
@@ -204,6 +213,7 @@ const Goals = ({ currency, openModal }) => {
     } catch (err) {
       console.error(err)
       if (err?.response?.data) console.error('Backend error:', err.response.data)
+      alert(err?.response?.data?.error || 'Failed to save goal')
     }
   }
 
@@ -278,11 +288,10 @@ const Goals = ({ currency, openModal }) => {
         <div className="flex justify-between items-center shrink-0">
           <div>
             <h2
-              className={`text-3xl font-bold flex items-center gap-3 ${
-                theme === 'dark'
+              className={`text-3xl font-bold flex items-center gap-3 ${theme === 'dark'
                   ? 'text-white drop-shadow-[0_0_10px_rgba(255,255,255,0.5)]'
                   : 'text-[#4B3621]'
-              }`}
+                }`}
             >
               <Target
                 size={32}
@@ -297,11 +306,10 @@ const Goals = ({ currency, openModal }) => {
 
           <button
             onClick={() => openGoalModal()}
-            className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold transition-all duration-300 hover:scale-105 border ${
-              theme === 'dark'
+            className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold transition-all duration-300 hover:scale-105 border ${theme === 'dark'
                 ? 'bg-pink-600 text-white shadow-[0_0_20px_#ec4899] hover:shadow-[0_0_40px_#ec4899] border-pink-400'
                 : 'bg-[#F5F5DC] text-[#4B3621] border-[#654321]/30 shadow-lg hover:bg-[#F5F5DC]/80'
-            }`}
+              }`}
           >
             <Plus size={20} /> New Goal
           </button>
@@ -325,35 +333,64 @@ const Goals = ({ currency, openModal }) => {
                 )}`}
               >
                 <div
-                  className={`absolute -right-6 -top-6 opacity-10 rotate-12 transition-transform group-hover:rotate-0 group-hover:scale-110 pointer-events-none ${
-                    isCompleted
+                  className={`absolute -right-6 -top-6 opacity-10 rotate-12 transition-transform group-hover:rotate-0 group-hover:scale-110 pointer-events-none ${isCompleted
                       ? theme === 'dark'
                         ? 'text-emerald-500'
                         : 'text-emerald-600'
                       : theme === 'dark'
                         ? 'text-pink-500'
                         : 'text-[#654321]'
-                  }`}
+                    }`}
                 >
                   {isCompleted ? <Trophy size={140} /> : <Target size={140} />}
                 </div>
 
                 <div className="flex justify-between items-start relative z-10 mb-4">
-                  <div>
+                  <div className="flex-1">
                     <h3
-                      className={`font-black text-2xl tracking-tight truncate max-w-[200px] ${
-                        theme === 'dark' ? 'text-white' : 'text-[#4B3621]'
-                      }`}
+                      className={`font-black text-2xl tracking-tight truncate max-w-[200px] ${theme === 'dark' ? 'text-white' : 'text-[#4B3621]'
+                        }`}
                       title={goal.name}
                     >
                       {goal.name}
                     </h3>
+                    
+                    {/* DAYS REMAINING BADGE */}
+                    <div className="mt-2">
+                      {isCompleted ? (
+                        <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider border ${
+                          theme === 'dark' 
+                            ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/50 shadow-[0_0_10px_rgba(16,185,129,0.3)]' 
+                            : 'bg-emerald-100 text-emerald-700 border-emerald-300'
+                        }`}>
+                          <Trophy size={12} />
+                          Completed!
+                        </span>
+                      ) : isOverdue ? (
+                        <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider border ${
+                          theme === 'dark' 
+                            ? 'bg-red-500/20 text-red-400 border-red-500/50 shadow-[0_0_10px_rgba(239,68,68,0.3)]' 
+                            : 'bg-red-100 text-red-700 border-red-300'
+                        }`}>
+                          <Clock size={12} />
+                          Overdue
+                        </span>
+                      ) : (
+                        <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider border ${
+                          theme === 'dark' 
+                            ? 'bg-pink-500/20 text-pink-400 border-pink-500/50 shadow-[0_0_10px_rgba(236,72,153,0.3)]' 
+                            : 'bg-[#F5F5DC] text-[#4B3621] border-[#654321]/30'
+                        }`}>
+                          <Clock size={12} />
+                          {stats.daysLeft} {stats.daysLeft === 1 ? 'day' : 'days'} left
+                        </span>
+                      )}
+                    </div>
                   </div>
 
                   <div
-                    className={`flex gap-2 opacity-0 group-hover:opacity-100 transition-all duration-300 translate-x-4 group-hover:translate-x-0 p-1 rounded-lg border ${
-                      theme === 'dark' ? 'bg-black/60 backdrop-blur-md border-white/10' : 'bg-white border-[#C9A87C]/50'
-                    }`}
+                    className={`flex gap-2 opacity-0 group-hover:opacity-100 transition-all duration-300 translate-x-4 group-hover:translate-x-0 p-1 rounded-lg border ${theme === 'dark' ? 'bg-black/60 backdrop-blur-md border-white/10' : 'bg-white border-[#C9A87C]/50'
+                      }`}
                   >
                     <button
                       onClick={() => openGoalModal(goal)}
@@ -395,15 +432,14 @@ const Goals = ({ currency, openModal }) => {
 
                   <div className={`w-full h-3 rounded-full overflow-hidden border relative ${theme === 'dark' ? 'bg-gray-900 border-white/10' : 'bg-white border-[#C9A87C]/30'}`}>
                     <div
-                      className={`h-full rounded-full transition-all duration-1000 relative overflow-hidden ${
-                        isCompleted
+                      className={`h-full rounded-full transition-all duration-1000 relative overflow-hidden ${isCompleted
                           ? theme === 'dark'
                             ? 'bg-emerald-500 shadow-[0_0_15px_#10b981]'
                             : 'bg-emerald-500'
                           : theme === 'dark'
                             ? 'bg-pink-600 shadow-[0_0_15px_#ec4899]'
                             : 'bg-[#654321]'
-                      }`}
+                        }`}
                       style={{ width: `${progress}%` }}
                     />
                   </div>
@@ -445,11 +481,10 @@ const Goals = ({ currency, openModal }) => {
                 {!isCompleted && (
                   <button
                     onClick={() => openContributeModal(goal.id || goal._id)}
-                    className={`mt-auto w-full py-3 rounded-xl font-bold transition-all duration-300 flex items-center justify-center gap-2 relative z-10 border ${
-                      theme === 'dark'
+                    className={`mt-auto w-full py-3 rounded-xl font-bold transition-all duration-300 flex items-center justify-center gap-2 relative z-10 border ${theme === 'dark'
                         ? 'bg-pink-600 hover:bg-pink-500 text-white shadow-[0_0_15px_rgba(236,72,153,0.4)] border-pink-400'
                         : 'bg-[#F5F5DC] hover:bg-[#F5F5DC]/80 text-[#4B3621] border-[#654321]/30 shadow-lg'
-                    }`}
+                      }`}
                   >
                     <Plus size={18} /> Contribute
                   </button>
@@ -486,11 +521,10 @@ const Goals = ({ currency, openModal }) => {
                   <input
                     autoFocus
                     type="text"
-                    className={`w-full rounded-xl p-3 outline-none transition border font-bold text-base ${
-                      theme === 'dark'
+                    className={`w-full rounded-xl p-3 outline-none transition border font-bold text-base ${theme === 'dark'
                         ? 'bg-black border-pink-500/30 text-white placeholder-gray-700 focus:border-pink-500'
                         : 'bg-white border-[#C9A87C]/50 text-[#4B3621] placeholder-[#654321]/40 focus:border-[#654321]'
-                    }`}
+                      }`}
                     value={form.name}
                     onChange={(e) => setForm({ ...form, name: e.target.value })}
                     placeholder="e.g. Dream House"
@@ -504,11 +538,10 @@ const Goals = ({ currency, openModal }) => {
                     <input
                       type="text"
                       inputMode="decimal"
-                      className={`w-full rounded-xl p-3 outline-none transition border font-bold text-lg ${
-                        theme === 'dark'
+                      className={`w-full rounded-xl p-3 outline-none transition border font-bold text-lg ${theme === 'dark'
                           ? 'bg-black border-pink-500/30 text-white focus:border-pink-500'
                           : 'bg-white border-[#C9A87C]/50 text-[#4B3621] focus:border-[#654321]'
-                      }`}
+                        }`}
                       value={displayTarget}
                       onChange={handleTargetChange}
                       placeholder="0.00"
@@ -521,11 +554,10 @@ const Goals = ({ currency, openModal }) => {
                     <input
                       type="text"
                       inputMode="decimal"
-                      className={`w-full rounded-xl p-3 outline-none transition border font-bold text-lg ${
-                        theme === 'dark'
+                      className={`w-full rounded-xl p-3 outline-none transition border font-bold text-lg ${theme === 'dark'
                           ? 'bg-black border-pink-500/30 text-white focus:border-pink-500'
                           : 'bg-white border-[#C9A87C]/50 text-[#4B3621] focus:border-[#654321]'
-                      }`}
+                        }`}
                       value={displaySaved}
                       onChange={handleSavedChange}
                       placeholder="0.00"
@@ -541,11 +573,10 @@ const Goals = ({ currency, openModal }) => {
                       e.stopPropagation()
                       setShowCalendar(!showCalendar)
                     }}
-                    className={`w-full flex items-center gap-3 rounded-xl p-3 transition text-left border ${
-                      theme === 'dark'
+                    className={`w-full flex items-center gap-3 rounded-xl p-3 transition text-left border ${theme === 'dark'
                         ? 'bg-black border-pink-500/30 text-white hover:border-pink-500'
                         : 'bg-white border-[#C9A87C]/50 text-[#4B3621] hover:border-[#654321]'
-                    }`}
+                      }`}
                   >
                     <CalendarIcon size={18} className={theme === 'dark' ? 'text-pink-500' : 'text-[#654321]'} />
                     <span className="font-mono text-base font-bold">{form.deadline}</span>
@@ -555,7 +586,10 @@ const Goals = ({ currency, openModal }) => {
                     <div className="absolute top-full left-0 z-50 mt-2">
                       <CustomCalendar
                         selectedDate={form.deadline}
-                        onSelect={(date) => setForm({ ...form, deadline: date })}
+                        onSelect={(date) => {
+                          setForm({ ...form, deadline: date })
+                          setShowCalendar(false)
+                        }}
                         onClose={() => setShowCalendar(false)}
                       />
                     </div>
@@ -563,11 +597,11 @@ const Goals = ({ currency, openModal }) => {
                 </div>
 
                 <button
-                  className={`w-full font-bold py-4 rounded-xl mt-4 transition-all duration-300 uppercase tracking-widest border ${
-                    theme === 'dark'
+                  type="submit"
+                  className={`w-full font-bold py-4 rounded-xl mt-4 transition-all duration-300 uppercase tracking-widest border ${theme === 'dark'
                       ? 'bg-pink-600 hover:bg-pink-500 text-white shadow-[0_0_20px_#ec4899] border-pink-400'
                       : 'bg-[#F5F5DC] hover:bg-[#F5F5DC]/80 text-[#4B3621] border-[#654321]/30 shadow-lg'
-                  }`}
+                    }`}
                 >
                   {form.id ? 'Update Goal' : 'Create Goal'}
                 </button>
@@ -595,11 +629,10 @@ const Goals = ({ currency, openModal }) => {
                     autoFocus
                     type="text"
                     inputMode="decimal"
-                    className={`w-full rounded-xl p-3 outline-none transition border text-2xl font-bold ${
-                      theme === 'dark'
+                    className={`w-full rounded-xl p-3 outline-none transition border text-2xl font-bold ${theme === 'dark'
                         ? 'bg-black border-pink-500/30 text-white focus:border-pink-500'
                         : 'bg-white border-[#C9A87C]/50 text-[#4B3621] focus:border-[#654321]'
-                    }`}
+                      }`}
                     value={displayContribute}
                     onChange={handleContributeChange}
                     placeholder="0.00"
@@ -608,11 +641,11 @@ const Goals = ({ currency, openModal }) => {
                 </div>
 
                 <button
-                  className={`w-full font-bold py-4 rounded-xl transition-all duration-300 uppercase tracking-widest border ${
-                    theme === 'dark'
+                  type="submit"
+                  className={`w-full font-bold py-4 rounded-xl transition-all duration-300 uppercase tracking-widest border ${theme === 'dark'
                       ? 'bg-pink-600 hover:bg-pink-500 text-white shadow-[0_0_20px_#ec4899] border-pink-400'
                       : 'bg-[#F5F5DC] hover:bg-[#F5F5DC]/80 text-[#4B3621] border-[#654321]/30 shadow-lg'
-                  }`}
+                    }`}
                 >
                   Add Contribution
                 </button>

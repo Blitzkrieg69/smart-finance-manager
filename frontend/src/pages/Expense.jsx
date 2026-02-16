@@ -27,51 +27,92 @@ const Expense = ({ data = [], openModal, handleDelete, handleEdit, currency }) =
 
   const getChartData = () => {
     const now = new Date()
+    
     if (chartPeriod === 'Weekly') {
         const weeks = []
-        const currentDay = now.getDay(); const diff = now.getDate() - currentDay + (currentDay === 0 ? -6 : 1)
-        const currentMonday = new Date(now); currentMonday.setDate(diff); currentMonday.setHours(0, 0, 0, 0)
+        
+        // Get the most recent Monday
+        const today = new Date(now)
+        today.setHours(0, 0, 0, 0)
+        const dayOfWeek = today.getDay()
+        const diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek // If Sunday, go back 6 days, else go to Monday
+        const recentMonday = new Date(today)
+        recentMonday.setDate(today.getDate() + diff)
+        
+        // Generate 12 weeks ending with the most recent Monday
         for (let i = 11; i >= 0; i--) {
-            const start = new Date(currentMonday); start.setDate(currentMonday.getDate() - (i * 7))
-            const end = new Date(start); end.setDate(start.getDate() + 6); end.setHours(23, 59, 59, 999)
-            const label = `${start.getDate()} ${start.toLocaleDateString('en-US', { month: 'short' })}`
-            weeks.push({ start, end, label })
+            const weekStart = new Date(recentMonday)
+            weekStart.setDate(recentMonday.getDate() - (i * 7))
+            weekStart.setHours(0, 0, 0, 0)
+            
+            const weekEnd = new Date(weekStart)
+            weekEnd.setDate(weekStart.getDate() + 6)
+            weekEnd.setHours(23, 59, 59, 999)
+            
+            const label = `${weekStart.getDate()} ${weekStart.toLocaleDateString('en-US', { month: 'short' })}`
+            weeks.push({ start: weekStart, end: weekEnd, label })
         }
+        
         return weeks.map(w => {
             const amount = data.reduce((sum, t) => {
-                if(!t.date) return sum;
-                const tParts = t.date.split('-'); const tDate = new Date(tParts[0], tParts[1] - 1, tParts[2]) 
-                return (tDate >= w.start && tDate <= w.end) ? sum + parseFloat(t.amount || 0) : sum
+                if (!t.date) return sum
+                
+                // Parse the date string properly (YYYY-MM-DD format)
+                const dateParts = t.date.split('-')
+                const transactionDate = new Date(
+                    parseInt(dateParts[0]), 
+                    parseInt(dateParts[1]) - 1, 
+                    parseInt(dateParts[2])
+                )
+                transactionDate.setHours(0, 0, 0, 0)
+                
+                // Compare timestamps
+                if (transactionDate >= w.start && transactionDate <= w.end) {
+                    return sum + parseFloat(t.amount || 0)
+                }
+                return sum
             }, 0)
+            
             return { name: w.label, amount }
         })
     }
+    
     if (chartPeriod === 'Yearly') {
         const years = {}
         data.forEach(t => { 
             if(t.date) {
-                const year = t.date.split('-')[0]; 
+                const year = t.date.split('-')[0]
                 years[year] = (years[year] || 0) + parseFloat(t.amount || 0) 
             }
         })
         if (Object.keys(years).length === 0) years[now.getFullYear()] = 0
         return Object.keys(years).sort().map(year => ({ name: year, amount: years[year] }))
     }
+    
+    // Monthly (default)
     const months = []
     for (let i = 5; i >= 0; i--) {
-        const d = new Date(); d.setMonth(d.getMonth() - i)
-        months.push({ key: d.toISOString().slice(0, 7), label: d.toLocaleDateString('en-US', { month: 'short' }) })
+        const d = new Date()
+        d.setMonth(d.getMonth() - i)
+        months.push({ 
+            key: d.toISOString().slice(0, 7), 
+            label: d.toLocaleDateString('en-US', { month: 'short' }) 
+        })
     }
+    
     return months.map(m => {
-        const monthSum = data.filter(t => t.date && t.date.startsWith(m.key)).reduce((sum, t) => sum + parseFloat(t.amount || 0), 0)
+        const monthSum = data
+            .filter(t => t.date && t.date.startsWith(m.key))
+            .reduce((sum, t) => sum + parseFloat(t.amount || 0), 0)
         return { name: m.label, amount: monthSum }
     })
   }
+  
   const chartData = getChartData()
 
   let processedData = data.filter(t => {
-    const desc = t.description || '';
-    const cat = t.category || '';
+    const desc = t.description || ''
+    const cat = t.category || ''
     const matchesSearch = desc.toLowerCase().includes(searchTerm.toLowerCase()) || cat.toLowerCase().includes(searchTerm.toLowerCase())
     const matchesCategory = categoryFilter === 'All' || t.category === categoryFilter
     const matchesDate = !dateFilter || t.date === dateFilter 
@@ -95,17 +136,16 @@ const Expense = ({ data = [], openModal, handleDelete, handleEdit, currency }) =
 
   // --- DATE FORMATTER HELPER ---
   const formatDate = (dateStr) => {
-      if (!dateStr) return 'Today';
-      const date = new Date(dateStr);
-      // Fallback if date is invalid
-      if (isNaN(date.getTime())) return dateStr;
+      if (!dateStr) return 'Today'
+      const date = new Date(dateStr)
+      if (isNaN(date.getTime())) return dateStr
       
       return date.toLocaleDateString('en-GB', { 
           day: '2-digit', 
           month: 'short', 
           year: 'numeric' 
-      });
-  };
+      })
+  }
 
   return (
     <div className={`flex-1 h-full overflow-y-auto custom-scrollbar animate-fade-in ${styles.bg}`} onClick={() => setShowCalendar(false)}>
@@ -175,7 +215,7 @@ const Expense = ({ data = [], openModal, handleDelete, handleEdit, currency }) =
             <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-5">
                 {sourceStats.length === 0 && <p className={`text-xs text-center py-10 ${theme === 'dark' ? 'text-gray-500' : 'text-[#654321]/50'}`}>No expenses recorded</p>}
                 {sourceStats.map((cat, index) => { 
-                    const percent = total > 0 ? ((cat.value / total) * 100) : 0; 
+                    const percent = total > 0 ? ((cat.value / total) * 100) : 0
                     return (
                         <div key={index} className="group">
                             <div className="flex justify-between text-xs mb-2">
@@ -204,7 +244,7 @@ const Expense = ({ data = [], openModal, handleDelete, handleEdit, currency }) =
                 <div className="relative" onClick={(e) => e.stopPropagation()}>
                     <button onClick={() => setShowCalendar(!showCalendar)} className={`flex items-center gap-2 px-4 py-2 rounded-xl border text-xs transition h-full font-bold tracking-wide ${dateFilter ? (theme === 'dark' ? 'bg-red-500 text-white border-red-400 shadow-[0_0_15px_#ef4444]' : 'bg-[#F5F5DC] text-[#4B3621] border-[#654321]/50') : (theme === 'dark' ? 'bg-black border-red-500/50 text-gray-400 hover:text-white hover:border-red-400' : 'bg-white border-[#C9A87C]/50 text-[#654321]/70 hover:text-[#4B3621]')}`}>
                         <CalendarIcon size={14} />{dateFilter || "FILTER DATE"}
-                        {dateFilter && (<div onClick={(e) => { e.stopPropagation(); setDateFilter(''); }} className={`ml-1 p-0.5 rounded-full ${theme === 'dark' ? 'hover:text-black' : 'hover:text-red-600'}`}><X size={12}/></div>)}
+                        {dateFilter && (<div onClick={(e) => { e.stopPropagation(); setDateFilter('') }} className={`ml-1 p-0.5 rounded-full ${theme === 'dark' ? 'hover:text-black' : 'hover:text-red-600'}`}><X size={12}/></div>)}
                     </button>
                     
                     {showCalendar && (
