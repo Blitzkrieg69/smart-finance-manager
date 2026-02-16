@@ -19,7 +19,7 @@
     "jsonwebtoken": "^9.0.3",
     "lodash": "^4.17.23",
     "mongoose": "^9.1.5",
-    "react-router-dom": "^7.13.0",
-    "yahoo-finance2": "^3.13.0"
+    "node-fetch": "^2.7.0",
+    "react-router-dom": "^7.13.0"
   }
 }
