@@ -47,12 +47,11 @@ const Login = () => {
         
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-600 rounded-2xl mb-4 shadow-lg shadow-blue-600/20">
-            <span className="font-bold text-white text-2xl">F</span>
+            <span className="font-bold text-white text-2xl">SFM</span>
           </div>
           <h1 className="text-3xl font-bold text-white">
-            Finance<span className="text-blue-500">AI</span>
+            Smart Finance Manager
           </h1>
-          <p className="text-gray-500 mt-2">Smart Personal Finance Manager</p>
         </div>
 
         <div className="bg-[#12131e] rounded-2xl border border-gray-800 p-8 shadow-2xl">
