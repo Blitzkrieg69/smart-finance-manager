@@ -17,7 +17,7 @@ import { useTheme } from '../context/ThemeContext'
 import { formatIndianNumber } from '../utils/formatNumber'
 
 // API
-const API_URL = 'http://localhost:5000/api'
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
 
 const Goals = ({ currency, openModal }) => {
   const { theme, styles } = useTheme()
@@ -300,7 +300,7 @@ const Goals = ({ currency, openModal }) => {
               Dream Targets
             </h2>
             <p className={`text-sm mt-1 ml-1 tracking-wide ${theme === 'dark' ? 'text-gray-400' : 'text-[#654321]/70'}`}>
-              AI-powered savings projection
+              Smart savings projection
             </p>
           </div>
 

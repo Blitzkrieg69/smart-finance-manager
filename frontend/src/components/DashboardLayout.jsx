@@ -1,58 +1,82 @@
 import { useState } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
-import { Bell, X, AlertTriangle, Sun, Moon, Trash2 } from 'lucide-react';
+import { Bell, X, AlertTriangle, Sun, Moon, Trash2, LogOut } from 'lucide-react';
 import Sidebar from './Sidebar';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
+
 
 export default function DashboardLayout({ notifications = [], onExport }) {
   const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const location = useLocation();
   const [showNotifications, setShowNotifications] = useState(false);
-  const [dismissedNotifications, setDismissedNotifications] = useState([]);
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
 
-  // Get Page Title
-  const pageName = location.pathname.slice(1) || 'dashboard';
-  const title = pageName.charAt(0).toUpperCase() + pageName.slice(1);
+  // ✅ FIX 1 — Notifications persist across refresh
+  const [dismissedNotifications, setDismissedNotifications] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('dismissedNotifications')) || []
+    } catch { return [] }
+  });
+
+  // ✅ FIX 2 — Nested route title (e.g. /dashboard/transactions → "Transactions")
+  const segments = location.pathname.split('/').filter(Boolean)
+  const pageName = segments[segments.length - 1] || 'dashboard'
+  const title = pageName.charAt(0).toUpperCase() + pageName.slice(1)
 
   // Filter out dismissed notifications
   const activeNotifications = notifications.filter(
     n => !dismissedNotifications.includes(n.id)
   );
 
-  // Clear all notifications
+  // Clear all — persisted to localStorage
   const handleClearAll = () => {
-    setDismissedNotifications(notifications.map(n => n.id));
-    setTimeout(() => setShowNotifications(false), 300);
+    const ids = notifications.map(n => n.id)
+    setDismissedNotifications(ids)
+    try {
+      localStorage.setItem('dismissedNotifications', JSON.stringify(ids))
+    } catch {}
+    setTimeout(() => setShowNotifications(false), 300)
   };
 
   return (
-    <div className={`flex h-screen font-sans overflow-hidden ${
-      theme === 'dark' ? 'bg-[#0b0c15] text-white' : 'bg-[#FFF8F0] text-[#4B3621]'
-    }`}>
+    <div
+      className={`flex h-screen font-sans overflow-hidden ${
+        theme === 'dark' ? 'bg-[#0b0c15] text-white' : 'bg-[#FFF8F0] text-[#4B3621]'
+      }`}
+      onClick={() => {
+        if (showProfileMenu) setShowProfileMenu(false)
+        if (showNotifications) setShowNotifications(false)
+      }}
+    >
       <Sidebar onExport={onExport} />
 
       <div className="flex-1 flex flex-col relative min-w-0">
+
         {/* HEADER */}
-        <header className={`h-16 border-b flex justify-between items-center px-8 shrink-0 ${
-          theme === 'dark' 
-            ? 'border-white/5 bg-[#0b0c15]' 
-            : 'border-[#654321]/10 bg-[#FFF8F0]'
-        }`}>
+        <header
+          className={`h-16 border-b flex justify-between items-center px-8 shrink-0 ${
+            theme === 'dark'
+              ? 'border-white/5 bg-[#0b0c15]'
+              : 'border-[#654321]/10 bg-[#FFF8F0]'
+          }`}
+          onClick={e => e.stopPropagation()}
+        >
           <h2 className={`text-lg font-bold tracking-wide ${
             theme === 'dark' ? 'text-white' : 'text-[#4B3621]'
           }`}>
             {title} Overview
           </h2>
-          
+
           <div className="flex items-center gap-4">
+
             {/* THEME TOGGLE */}
             <button
               onClick={toggleTheme}
               className={`p-2 rounded-full transition-all ${
-                theme === 'dark' 
-                  ? 'hover:bg-white/5 text-gray-400 hover:text-yellow-400' 
+                theme === 'dark'
+                  ? 'hover:bg-white/5 text-gray-400 hover:text-yellow-400'
                   : 'hover:bg-[#F5F5DC] text-[#654321] hover:text-[#4B3621]'
               }`}
               title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} Mode`}
@@ -63,10 +87,13 @@ export default function DashboardLayout({ notifications = [], onExport }) {
             {/* NOTIFICATIONS */}
             <div className="relative">
               <button
-                onClick={() => setShowNotifications(!showNotifications)}
+                onClick={() => {
+                  setShowNotifications(prev => !prev)
+                  setShowProfileMenu(false)
+                }}
                 className={`relative p-2 rounded-full transition-all ${
-                  theme === 'dark' 
-                    ? 'hover:bg-white/5 text-gray-400' 
+                  theme === 'dark'
+                    ? 'hover:bg-white/5 text-gray-400'
                     : 'hover:bg-[#F5F5DC] text-[#654321]'
                 }`}
               >
@@ -81,7 +108,7 @@ export default function DashboardLayout({ notifications = [], onExport }) {
                   </span>
                 )}
               </button>
-              
+
               {showNotifications && (
                 <div className={`absolute right-0 top-12 w-96 rounded-2xl shadow-2xl p-4 z-50 border animate-fade-in ${
                   theme === 'dark'
@@ -179,8 +206,8 @@ export default function DashboardLayout({ notifications = [], onExport }) {
               )}
             </div>
 
-            {/* PROFILE */}
-            <div className="flex items-center gap-3">
+            {/* ✅ FIX 3 — Profile dropdown instead of direct logout */}
+            <div className="relative flex items-center gap-3">
               <div className="text-right hidden sm:block">
                 <p className={`text-xs font-medium ${
                   theme === 'dark' ? 'text-gray-300' : 'text-[#4B3621]'
@@ -193,8 +220,12 @@ export default function DashboardLayout({ notifications = [], onExport }) {
                   {user?.email}
                 </p>
               </div>
+
               <button
-                onClick={logout}
+                onClick={() => {
+                  setShowProfileMenu(prev => !prev)
+                  setShowNotifications(false)
+                }}
                 className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs transition-all ${
                   theme === 'dark'
                     ? 'bg-blue-600 hover:bg-blue-500 text-white'
@@ -203,12 +234,49 @@ export default function DashboardLayout({ notifications = [], onExport }) {
               >
                 {user?.name?.charAt(0).toUpperCase()}
               </button>
+
+              {showProfileMenu && (
+                <div className={`absolute right-0 top-11 w-48 rounded-2xl shadow-2xl p-2 z-50 border ${
+                  theme === 'dark'
+                    ? 'bg-[#09090b]/95 backdrop-blur-xl border-white/10'
+                    : 'bg-white border-[#654321]/20 shadow-lg'
+                }`}>
+                  <div className={`px-3 py-2 mb-1 rounded-xl ${
+                    theme === 'dark' ? 'bg-white/5' : 'bg-[#F5F5DC]'
+                  }`}>
+                    <p className={`text-xs font-bold truncate ${
+                      theme === 'dark' ? 'text-white' : 'text-[#4B3621]'
+                    }`}>
+                      {user?.name}
+                    </p>
+                    <p className={`text-[10px] truncate ${
+                      theme === 'dark' ? 'text-gray-500' : 'text-[#654321]/60'
+                    }`}>
+                      {user?.email}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setShowProfileMenu(false)
+                      logout()
+                    }}
+                    className={`w-full text-left text-sm font-bold px-3 py-2 rounded-xl transition flex items-center gap-2 ${
+                      theme === 'dark'
+                        ? 'text-red-400 hover:bg-red-500/10'
+                        : 'text-red-600 hover:bg-red-50'
+                    }`}
+                  >
+                    <LogOut size={14} /> Sign Out
+                  </button>
+                </div>
+              )}
             </div>
+
           </div>
         </header>
 
         {/* CONTENT AREA */}
-        <Outlet /> 
+        <Outlet />
       </div>
     </div>
   );

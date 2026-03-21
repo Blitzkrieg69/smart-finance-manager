@@ -5,6 +5,7 @@ import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts'
 import { useTheme } from '../context/ThemeContext'
 import { formatIndianNumber } from '../utils/formatNumber'
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
 
 const Investments = ({ investments = [], openModal, handleDelete, handleEdit, currency, exchangeRate = 1 }) => {
     const { theme, styles } = useTheme()
@@ -12,7 +13,6 @@ const Investments = ({ investments = [], openModal, handleDelete, handleEdit, cu
     const [refreshing, setRefreshing] = useState(false)
     const [searchTerm, setSearchTerm] = useState('')
 
-    // --- LOGIC ---
     const convert = (value, assetCurrency) => {
         const val = parseFloat(value || 0);
         if (assetCurrency === 'USD') return val * (exchangeRate || 1);
@@ -20,7 +20,6 @@ const Investments = ({ investments = [], openModal, handleDelete, handleEdit, cu
         return val * (exchangeRate || 1);
     }
 
-    // --- DISPLAY HELPERS ---
     const isCrypto = (inv) => String(inv?.category || '').toLowerCase() === 'crypto'
 
     const normalizeExchange = (exch) => {
@@ -37,15 +36,16 @@ const Investments = ({ investments = [], openModal, handleDelete, handleEdit, cu
         return parts.join(' • ')
     }
 
+    // FIX 1: Use API_URL constant + FIX 2: Added withCredentials
     const handleRefresh = async () => {
         setRefreshing(true)
         try {
-            const res = await axios.post('http://localhost:5000/api/investments/refresh')
+            const res = await axios.post(`${API_URL}/investments/refresh`, {}, { withCredentials: true })
             if (res.status === 200) window.location.reload()
-        } catch (err) { 
-            alert("Failed to update prices.") 
-        } finally { 
-            setRefreshing(false) 
+        } catch (err) {
+            alert("Failed to update prices.")
+        } finally {
+            setRefreshing(false)
         }
     }
 
@@ -56,14 +56,12 @@ const Investments = ({ investments = [], openModal, handleDelete, handleEdit, cu
         (inv.exchange || '').toLowerCase().includes(searchTerm.toLowerCase())
     )
 
-    // PORTFOLIO-WIDE STATS (ALL INVESTMENTS - MATCHES ANALYTICS)
     const portfolioInvested = investments.reduce((sum, i) => sum + (parseFloat(i.quantity || 0) * convert(i.buy_price, i.currency)), 0)
     const portfolioValue = investments.reduce((sum, i) => sum + (parseFloat(i.quantity || 0) * convert(i.current_price, i.currency)), 0)
     const portfolioProfitLoss = portfolioValue - portfolioInvested
     const portfolioIsProfit = portfolioProfitLoss >= 0
     const portfolioROI = portfolioInvested > 0 ? (portfolioProfitLoss / portfolioInvested) * 100 : 0
 
-    // FILTERED VIEW STATS (VISIBLE INVESTMENTS ONLY)
     const totalInvested = filteredInvestments.reduce((sum, i) => sum + (parseFloat(i.quantity || 0) * convert(i.buy_price, i.currency)), 0)
     const currentValue = filteredInvestments.reduce((sum, i) => sum + (parseFloat(i.quantity || 0) * convert(i.current_price, i.currency)), 0)
     const profitLoss = currentValue - totalInvested
@@ -82,17 +80,15 @@ const Investments = ({ investments = [], openModal, handleDelete, handleEdit, cu
         ? ['#a855f7', '#d946ef', '#8b5cf6', '#6366f1', '#ec4899']
         : ['#4B3621', '#654321', '#8B4513', '#A0522D', '#6B4423']
 
-    // --- DYNAMIC STYLES ---
     const getCardStyle = (colorType = 'purple') => {
         const base = `p-6 rounded-2xl border flex flex-col relative transition-all duration-500 overflow-hidden ${styles.card}`
-
         if (theme !== 'dark') return `${base} shadow-xl`
-
         switch (colorType) {
             case 'purple': return `${base} border-purple-500/40 shadow-[0_0_30px_rgba(168,85,247,0.2)] hover:border-purple-400 hover:shadow-[0_0_40px_rgba(168,85,247,0.3)]`
             case 'profit': return `${base} border-emerald-500/40 shadow-[0_0_30px_rgba(16,185,129,0.2)] hover:shadow-[0_0_40px_rgba(16,185,129,0.3)]`
             case 'loss': return `${base} border-red-500/40 shadow-[0_0_30px_rgba(239,68,68,0.2)] hover:shadow-[0_0_40px_rgba(239,68,68,0.3)]`
-            default: return base
+            // FIX 3: explicit purple default so glow effect always applies
+            default: return `${base} border-purple-500/40 shadow-[0_0_30px_rgba(168,85,247,0.2)] hover:border-purple-400 hover:shadow-[0_0_40px_rgba(168,85,247,0.3)]`
         }
     }
 
@@ -157,7 +153,6 @@ const Investments = ({ investments = [], openModal, handleDelete, handleEdit, cu
                 {/* STATS ROW */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8 shrink-0">
 
-                    {/* CURRENT VALUE */}
                     <div className={`${getCardStyle('purple')} group`}>
                         <div className="absolute top-0 right-0 p-4 opacity-20 group-hover:opacity-30 transition pointer-events-none">
                             <Briefcase size={80} className={`${theme === 'dark' ? 'text-purple-500 drop-shadow-[0_0_15px_#a855f7]' : 'text-[#654321]'}`} />
@@ -171,7 +166,6 @@ const Investments = ({ investments = [], openModal, handleDelete, handleEdit, cu
                         </p>
                     </div>
 
-                    {/* TOTAL INVESTED */}
                     <div className={getCardStyle('purple')}>
                         <p className={`text-[10px] font-bold uppercase tracking-[0.2em] mb-1 ${theme === 'dark' ? 'text-gray-400' : 'text-[#654321]/70'}`}>Total Invested</p>
                         <h3 className={`text-2xl font-black mt-1 ${theme === 'dark' ? 'text-gray-200 drop-shadow-[0_0_5px_rgba(255,255,255,0.3)]' : 'text-[#4B3621]'}`}>
@@ -182,7 +176,6 @@ const Investments = ({ investments = [], openModal, handleDelete, handleEdit, cu
                         </div>
                     </div>
 
-                    {/* PROFIT/LOSS - NOW USES PORTFOLIO VALUES */}
                     <div className={getCardStyle(portfolioIsProfit ? 'profit' : 'loss')}>
                         <div>
                             <p className={`text-[10px] font-bold uppercase tracking-[0.2em] ${theme === 'dark' ? 'text-gray-400' : 'text-[#654321]/70'}`}>Total Profit / Loss</p>
@@ -208,9 +201,9 @@ const Investments = ({ investments = [], openModal, handleDelete, handleEdit, cu
                 <div className="flex-1 flex flex-col xl:flex-row gap-8 min-h-0">
 
                     {/* ASSET TABLE */}
-                    <div className={`${getCardStyle()} flex-1 !p-0`}>
+                    {/* FIX 3: explicit 'purple' passed so glow effect applies */}
+                    <div className={`${getCardStyle('purple')} flex-1 !p-0`}>
 
-                        {/* TABLE HEADER */}
                         <div className={`grid grid-cols-12 gap-2 px-6 py-4 border-b text-[10px] font-black uppercase tracking-widest ${theme === 'dark' ? 'border-purple-500/30 bg-purple-900/10 text-purple-400' : 'border-[#C9A87C]/30 bg-[#F5F5DC]/50 text-[#654321]'}`}>
                             <div className="col-span-3">Asset</div>
                             <div className="col-span-1 text-right">Date</div>
@@ -223,7 +216,8 @@ const Investments = ({ investments = [], openModal, handleDelete, handleEdit, cu
                             <div className="col-span-1 text-center">Action</div>
                         </div>
 
-                        <div className="overflow-visible">
+                        {/* FIX 4: overflow-x-auto instead of overflow-visible */}
+                        <div className="overflow-x-auto">
                             {filteredInvestments.length === 0 ? (
                                 <div className={`h-64 flex flex-col items-center justify-center opacity-50 ${theme === 'dark' ? 'text-gray-500' : 'text-[#654321]/50'}`}>
                                     <Search size={64} className={`mb-4 ${theme === 'dark' ? 'text-purple-900' : 'text-[#654321]/30'}`} />
@@ -238,13 +232,11 @@ const Investments = ({ investments = [], openModal, handleDelete, handleEdit, cu
                                     const itemProfit = itemValue - itemCost
                                     const itemIsProfit = itemProfit >= 0
                                     const itemRoi = itemCost > 0 ? (itemProfit / itemCost) * 100 : 0
-
                                     const metaLine = getAssetMetaLine(inv)
 
                                     return (
                                         <div key={inv.id || inv._id || index} className={`grid grid-cols-12 gap-2 px-6 py-4 items-center border-b transition group text-sm ${theme === 'dark' ? 'border-purple-500/10 hover:bg-purple-500/5' : 'border-[#C9A87C]/20 hover:bg-[#F5F5DC]/30'}`}>
 
-                                            {/* ASSET NAME */}
                                             <div className="col-span-3 flex items-center gap-4 overflow-hidden">
                                                 <div className={getBadgeColor(inv.category)}>
                                                     {(inv.name || '?').charAt(0)}
@@ -306,7 +298,7 @@ const Investments = ({ investments = [], openModal, handleDelete, handleEdit, cu
                     </div>
 
                     {/* ALLOCATION CHART */}
-                    <div className={`${getCardStyle()} w-80 shrink-0`}>
+                    <div className={`${getCardStyle('purple')} w-80 shrink-0`}>
                         <h3 className={`font-bold mb-6 text-center text-sm uppercase tracking-widest ${theme === 'dark' ? 'text-white' : 'text-[#4B3621]'}`}>Allocation</h3>
                         <div className="flex-1 w-full min-h-[300px] relative">
                             <ResponsiveContainer width="100%" height="100%">
@@ -334,7 +326,7 @@ const Investments = ({ investments = [], openModal, handleDelete, handleEdit, cu
                                         itemStyle={{ color: theme === 'dark' ? '#fff' : '#4B3621', fontWeight: 'bold' }}
                                     />
                                 </PieChart>
-                            </ResponsiveContainer>
+            </ResponsiveContainer>
 
                             <div className="absolute inset-0 flex items-center justify-center pointer-events-none pb-4">
                                 <div className="text-center">

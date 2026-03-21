@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const Goal = require('../models/Goals'); // Note: Your file might be named 'Goals.js' or 'Goal.js' check exact name
+const Goal = require('../models/Goals');
 const { requireAuth } = require('../middleware/authMiddleware');
 const { validateGoal } = require('../middleware/validation');
 
@@ -46,10 +46,11 @@ router.put('/:id', requireAuth, validateGoal, async (req, res) => {
 // DELETE
 router.delete('/:id', requireAuth, async (req, res) => {
     try {
-        await Goal.findOneAndDelete({ 
+        const deleted = await Goal.findOneAndDelete({ 
             _id: req.params.id, 
             userId: req.session.userId 
         });
+        if (!deleted) return res.status(404).json({ error: "Not Found" });
         res.json({ message: "Deleted" });
     } catch (err) {
         res.status(500).json({ error: err.message });

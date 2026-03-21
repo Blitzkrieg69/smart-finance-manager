@@ -2,15 +2,13 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Routes, Route, Navigate } from 'react-router-dom';
 
-// CONTEXT
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { ThemeProvider } from './context/ThemeContext';
 
-// COMPONENTS
 import DashboardLayout from './components/DashboardLayout';
 import AddEditModal from './components/modals/AddEditModal';
 import ExportModal from './components/modals/ExportModal';
 
-// PAGES
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Income from './pages/Income';
@@ -20,24 +18,22 @@ import Investments from './pages/Investments';
 import Goals from './pages/Goals';
 
 const API_URL = 'http://localhost:5000';
+axios.defaults.withCredentials = true;
 
 function AuthenticatedApp() {
   const { user } = useAuth();
-  
-  // --- STATE ---
+
   const [transactions, setTransactions] = useState([]);
   const [budgets, setBudgets] = useState([]);
   const [investments, setInvestments] = useState([]);
-  const [exchangeRate, setExchangeRate] = useState(91.5); // Default INR to USD rate
+  const [exchangeRate, setExchangeRate] = useState(91.5);
   const currency = '₹';
 
-  // --- MODALS ---
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalType, setModalType] = useState('expense');
   const [editingItem, setEditingItem] = useState(null);
   const [isExportOpen, setIsExportOpen] = useState(false);
 
-  // --- DATA FETCHING ---
   const fetchData = async () => {
     try {
       const [txRes, budRes, invRes] = await Promise.allSettled([
@@ -61,7 +57,6 @@ function AuthenticatedApp() {
     if (user) fetchData();
   }, [user]);
 
-  // --- HANDLERS ---
   const handleDelete = async (id, type = 'transaction') => {
     const endpoints = {
       transaction: `/api/transactions/${id}`,
@@ -78,22 +73,20 @@ function AuthenticatedApp() {
     setIsModalOpen(true);
   };
 
-  // --- NOTIFICATIONS LOGIC ---
   const expenses = transactions.filter(t => t.type === 'expense');
+
   const notifications = budgets.map(b => {
     const spent = expenses
       .filter(e => e.category === b.category)
       .reduce((sum, e) => sum + Number(e.amount), 0);
-    
     const percent = (spent / b.limit) * 100;
-    if (percent < 80) return null; // Healthy
-
+    if (percent < 80) return null;
     return {
       id: b._id || b.id,
       category: b.category,
       type: percent >= 100 ? 'critical' : 'warning',
-      message: percent >= 100 
-        ? `Exceeded limit by ${currency}${(spent - b.limit).toFixed(0)}` 
+      message: percent >= 100
+        ? `Exceeded limit by ${currency}${(spent - b.limit).toFixed(0)}`
         : `${percent.toFixed(0)}% of budget used`
     };
   }).filter(Boolean);
@@ -134,10 +127,13 @@ function AppRoutes() {
   return user ? <AuthenticatedApp /> : <Login />;
 }
 
+// ✅ FIX — ThemeProvider now wraps the entire app
 export default function App() {
   return (
     <AuthProvider>
-      <AppRoutes />
+      <ThemeProvider>
+        <AppRoutes />
+      </ThemeProvider>
     </AuthProvider>
   );
 }

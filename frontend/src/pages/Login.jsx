@@ -1,22 +1,22 @@
 import { useState } from 'react';
-import { LogIn, UserPlus, Mail, Lock, User, AlertCircle } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { LogIn, UserPlus, Mail, Lock, User, AlertCircle, CheckCircle } from 'lucide-react'; // ✅ Add CheckCircle
 import { useAuth } from '../context/AuthContext';
 
 const Login = () => {
   const { login, register } = useAuth();
-  
+  const navigate = useNavigate();
+
   const [isLogin, setIsLogin] = useState(true);
-  const [formData, setFormData] = useState({
-    email: '',
-    password: '',
-    name: ''
-  });
+  const [formData, setFormData] = useState({ email: '', password: '', name: '' });
   const [error, setError] = useState('');
+  const [successMessage, setSuccessMessage] = useState(''); // ✅ ADD
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setSuccessMessage(''); // ✅ Clear on each submit
     setLoading(true);
 
     try {
@@ -29,6 +29,13 @@ const Login = () => {
 
       if (!result.success) {
         setError(result.error || 'Authentication failed');
+      } else if (!isLogin) {
+        // ✅ After register — switch to login tab with success message
+        setIsLogin(true);
+        setFormData({ email: formData.email, password: '', name: '' }); // pre-fill email
+        setSuccessMessage('Account created successfully! Please log in.');
+      } else {
+        navigate('/dashboard');
       }
     } catch (err) {
       setError('An unexpected error occurred');
@@ -57,7 +64,7 @@ const Login = () => {
         <div className="bg-[#12131e] rounded-2xl border border-gray-800 p-8 shadow-2xl">
           <div className="flex bg-[#0b0c15] rounded-xl p-1 mb-6">
             <button
-              onClick={() => { setIsLogin(true); setError(''); }}
+              onClick={() => { setIsLogin(true); setError(''); setSuccessMessage(''); }}
               className={`flex-1 py-2 rounded-lg font-medium transition ${
                 isLogin ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white'
               }`}
@@ -65,7 +72,7 @@ const Login = () => {
               Login
             </button>
             <button
-              onClick={() => { setIsLogin(false); setError(''); }}
+              onClick={() => { setIsLogin(false); setError(''); setSuccessMessage(''); }}
               className={`flex-1 py-2 rounded-lg font-medium transition ${
                 !isLogin ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white'
               }`}
@@ -73,6 +80,14 @@ const Login = () => {
               Register
             </button>
           </div>
+
+          {/* ✅ Success Message Banner */}
+          {successMessage && (
+            <div className="mb-4 p-3 bg-green-500/10 border border-green-500/20 rounded-lg flex items-center gap-2 text-green-400 text-sm">
+              <CheckCircle size={16} />
+              {successMessage}
+            </div>
+          )}
 
           {error && (
             <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg flex items-center gap-2 text-red-400 text-sm">
@@ -132,7 +147,7 @@ const Login = () => {
                   value={formData.password}
                   onChange={handleChange}
                   className="w-full bg-[#0b0c15] border border-gray-700 rounded-lg pl-10 pr-4 py-2.5 text-white outline-none focus:border-blue-500 transition"
-                  placeholder="********" 
+                  placeholder="********"
                   required
                   minLength={6}
                 />

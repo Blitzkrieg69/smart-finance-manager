@@ -7,11 +7,13 @@ const { validateInvestment } = require('../middleware/validation');
 
 const market = require('../market');
 
+const USD_TO_INR_RATE = 91.5;
+
 // SEARCH (Public/Authenticated)
 router.get('/search', async (req, res) => {
     try {
         const q = String(req.query.q || '').trim();
-        const type = String(req.query.type || '').trim(); // 'crypto' | 'in' | 'us' | ''
+        const type = String(req.query.type || '').trim();
         const limit = Math.min(parseInt(req.query.limit || '20', 10) || 20, 50);
 
         if (!q) return res.json([]);
@@ -29,24 +31,22 @@ router.get('/', requireAuth, async (req, res) => {
     try {
         const userId = req.session.userId;
         const investments = await Investment.find({ userId });
-        res.json({ investments, rate: 91.5 }); // rate hardcoded for now
+        res.json({ investments, rate: USD_TO_INR_RATE }); // ✅ FIX #2
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
 });
 
 // REFRESH LIVE PRICES (User Scoped)
-// POST /api/investments/refresh
 router.post('/refresh', requireAuth, async (req, res) => {
     try {
         const userId = req.session.userId;
         const investments = await Investment.find({ userId });
 
         if (!investments.length) {
-            return res.json({ success: true, investments: [], rate: 84 });
+            return res.json({ success: true, investments: [], rate: USD_TO_INR_RATE }); // ✅ FIX #2
         }
 
-        // Each investment must store provider + providerId (from /search selection)
         const updates = [];
         for (const inv of investments) {
             const quote = await market.getQuote(inv);
@@ -57,7 +57,6 @@ router.post('/refresh', requireAuth, async (req, res) => {
             });
         }
 
-        // Persist updates
         const ops = updates.map(u => ({
             updateOne: {
                 filter: { _id: u._id, userId },
@@ -68,7 +67,7 @@ router.post('/refresh', requireAuth, async (req, res) => {
         if (ops.length) await Investment.bulkWrite(ops);
 
         const updated = await Investment.find({ userId });
-        res.json({ success: true, investments: updated, rate: 91.5 });
+        res.json({ success: true, investments: updated, rate: USD_TO_INR_RATE }); // ✅ FIX #2
     } catch (err) {
         console.error('Refresh error:', err.message);
         res.status(500).json({ error: 'Failed to refresh prices' });
@@ -78,8 +77,6 @@ router.post('/refresh', requireAuth, async (req, res) => {
 // CREATE
 router.post('/', requireAuth, validateInvestment, async (req, res) => {
     try {
-        // Frontend should send provider + providerId from /search result
-        console.log('📥 Received investment data:', req.body);
         const newInv = new Investment({
             ...req.body,
             exchange: req.body.category === 'Crypto' ? '' : (req.body.exchange || ''),
@@ -117,7 +114,11 @@ router.put('/:id', requireAuth, validateInvestment, async (req, res) => {
 // DELETE
 router.delete('/:id', requireAuth, async (req, res) => {
     try {
-        await Investment.findOneAndDelete({ _id: req.params.id, userId: req.session.userId });
+        const deleted = await Investment.findOneAndDelete({ 
+            _id: req.params.id, 
+            userId: req.session.userId 
+        });
+        if (!deleted) return res.status(404).json({ error: 'Not Found' });
         res.json({ message: 'Deleted' });
     } catch (err) {
         res.status(500).json({ error: err.message });

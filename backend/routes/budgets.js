@@ -26,10 +26,11 @@ const getDateRangeForPeriod = (period) => {
         startDate.setHours(0, 0, 0, 0);
     }
 
-    return {
-        startDate: startDate.toISOString().split('T')[0], // YYYY-MM-DD
-        endDate: now.toISOString().split('T')[0]
-    };
+    // Return actual Date objects instead of strings
+    const endDate = new Date(now);
+    endDate.setHours(23, 59, 59, 999); 
+
+    return { startDate, endDate };
 };
 
 // GET ALL (User Scoped + Period-Aware Spent Calculation)
@@ -38,7 +39,6 @@ router.get('/', requireAuth, async (req, res) => {
         const userId = req.session.userId;
         const budgets = await Budget.find({ userId });
         
-        // Calculate "spent" amount dynamically for CURRENT period only
         const budgetData = await Promise.all(budgets.map(async (b) => {
             const period = b.period || 'Monthly';
             const { startDate, endDate } = getDateRangeForPeriod(period);
@@ -47,7 +47,7 @@ router.get('/', requireAuth, async (req, res) => {
                 userId,
                 type: 'expense',
                 category: b.category,
-                date: { $gte: startDate, $lte: endDate } // ✅ Filter by current period
+                date: { $gte: startDate, $lte: endDate }
             });
             
             const spent = expenses.reduce((sum, txn) => sum + txn.amount, 0);

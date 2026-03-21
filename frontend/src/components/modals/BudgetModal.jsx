@@ -78,7 +78,7 @@ const BudgetModal = ({
         id: null,
         category: '',
         limit: '',
-        period: 'Monthly'
+        period: 'Weekly'
       })
       setDisplayLimit('')
     }

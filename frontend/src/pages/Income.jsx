@@ -5,6 +5,7 @@ import CustomCalendar from '../components/CustomCalendar'
 import { useTheme } from '../context/ThemeContext'
 import { formatIndianNumber } from '../utils/formatNumber'
 
+
 const Income = ({ data = [], openModal, handleDelete, handleEdit, currency }) => {
     const { theme, styles } = useTheme()
 
@@ -15,8 +16,26 @@ const Income = ({ data = [], openModal, handleDelete, handleEdit, currency }) =>
     const [sortConfig, setSortConfig] = useState({ key: 'date', direction: 'desc' })
     const [chartPeriod, setChartPeriod] = useState('Monthly')
 
-    // SAFE TOTAL CALCULATION
+    // TOTAL (all time)
     const total = data.reduce((sum, t) => sum + parseFloat(t.amount || 0), 0)
+
+    // ✅ CURRENT MONTH INCOME
+    const now = new Date()
+    const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+    const currentMonthIncome = data
+        .filter(t => t.date && t.date.startsWith(currentMonthKey))
+        .reduce((sum, t) => sum + parseFloat(t.amount || 0), 0)
+
+    // ✅ LAST MONTH INCOME (for % change)
+    const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+    const lastMonthKey = `${lastMonth.getFullYear()}-${String(lastMonth.getMonth() + 1).padStart(2, '0')}`
+    const lastMonthIncome = data
+        .filter(t => t.date && t.date.startsWith(lastMonthKey))
+        .reduce((sum, t) => sum + parseFloat(t.amount || 0), 0)
+
+    const monthChange = lastMonthIncome > 0
+        ? (((currentMonthIncome - lastMonthIncome) / lastMonthIncome) * 100).toFixed(1)
+        : null
 
     const sourceStats = data.reduce((acc, item) => {
         const found = acc.find(x => x.name === item.category)
@@ -27,79 +46,59 @@ const Income = ({ data = [], openModal, handleDelete, handleEdit, currency }) =>
 
     const getChartData = () => {
         const now = new Date()
-        
+
         if (chartPeriod === 'Weekly') {
             const weeks = []
-            
-            // Get the most recent Monday
             const today = new Date(now)
             today.setHours(0, 0, 0, 0)
             const dayOfWeek = today.getDay()
-            const diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek // If Sunday, go back 6 days, else go to Monday
+            const diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek
             const recentMonday = new Date(today)
             recentMonday.setDate(today.getDate() + diff)
-            
-            // Generate 12 weeks ending with the most recent Monday
+
             for (let i = 11; i >= 0; i--) {
                 const weekStart = new Date(recentMonday)
                 weekStart.setDate(recentMonday.getDate() - (i * 7))
                 weekStart.setHours(0, 0, 0, 0)
-                
                 const weekEnd = new Date(weekStart)
                 weekEnd.setDate(weekStart.getDate() + 6)
                 weekEnd.setHours(23, 59, 59, 999)
-                
                 const label = `${weekStart.getDate()} ${weekStart.toLocaleDateString('en-US', { month: 'short' })}`
                 weeks.push({ start: weekStart, end: weekEnd, label })
             }
-            
+
             return weeks.map(w => {
                 const amount = data.reduce((sum, t) => {
                     if (!t.date) return sum
-                    
-                    // Parse the date string properly (YYYY-MM-DD format)
-                    const dateParts = t.date.split('-')
-                    const transactionDate = new Date(
-                        parseInt(dateParts[0]), 
-                        parseInt(dateParts[1]) - 1, 
-                        parseInt(dateParts[2])
-                    )
+                    const dateParts = t.date.slice(0, 10).split('-')
+                    const transactionDate = new Date(parseInt(dateParts[0]), parseInt(dateParts[1]) - 1, parseInt(dateParts[2]))
                     transactionDate.setHours(0, 0, 0, 0)
-                    
-                    // Compare timestamps
-                    if (transactionDate >= w.start && transactionDate <= w.end) {
-                        return sum + parseFloat(t.amount || 0)
-                    }
+                    if (transactionDate >= w.start && transactionDate <= w.end) return sum + parseFloat(t.amount || 0)
                     return sum
                 }, 0)
-                
                 return { name: w.label, amount }
             })
         }
-        
+
         if (chartPeriod === 'Yearly') {
             const years = {}
             data.forEach(t => {
                 if (t.date) {
-                    const year = t.date.split('-')[0]
+                    const year = t.date.slice(0, 4)
                     years[year] = (years[year] || 0) + parseFloat(t.amount || 0)
                 }
             })
             if (Object.keys(years).length === 0) years[now.getFullYear()] = 0
             return Object.keys(years).sort().map(year => ({ name: year, amount: years[year] }))
         }
-        
+
         // Monthly (default)
         const months = []
         for (let i = 5; i >= 0; i--) {
             const d = new Date()
             d.setMonth(d.getMonth() - i)
-            months.push({ 
-                key: d.toISOString().slice(0, 7), 
-                label: d.toLocaleDateString('en-US', { month: 'short' }) 
-            })
+            months.push({ key: d.toISOString().slice(0, 7), label: d.toLocaleDateString('en-US', { month: 'short' }) })
         }
-        
         return months.map(m => {
             const monthSum = data
                 .filter(t => t.date && t.date.startsWith(m.key))
@@ -107,7 +106,7 @@ const Income = ({ data = [], openModal, handleDelete, handleEdit, currency }) =>
             return { name: m.label, amount: monthSum }
         })
     }
-    
+
     const chartData = getChartData()
 
     let processedData = data.filter(t => {
@@ -115,7 +114,8 @@ const Income = ({ data = [], openModal, handleDelete, handleEdit, currency }) =>
         const cat = t.category || ''
         const matchesSearch = desc.toLowerCase().includes(searchTerm.toLowerCase()) || cat.toLowerCase().includes(searchTerm.toLowerCase())
         const matchesCategory = categoryFilter === 'All' || t.category === categoryFilter
-        const matchesDate = !dateFilter || t.date === dateFilter
+        // ✅ FIX — handles both "YYYY-MM-DD" and "YYYY-MM-DDTHH:mm:ss.000Z" formats
+        const matchesDate = !dateFilter || (t.date && t.date.slice(0, 10) === dateFilter)
         return matchesSearch && matchesCategory && matchesDate
     })
 
@@ -134,17 +134,11 @@ const Income = ({ data = [], openModal, handleDelete, handleEdit, currency }) =>
         return `${base} shadow-xl`
     }
 
-    // --- DATE FORMATTER HELPER ---
     const formatDate = (dateStr) => {
         if (!dateStr) return 'Today'
         const date = new Date(dateStr)
         if (isNaN(date.getTime())) return dateStr
-        
-        return date.toLocaleDateString('en-GB', { 
-            day: '2-digit', 
-            month: 'short', 
-            year: 'numeric' 
-        })
+        return date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
     }
 
     return (
@@ -160,11 +154,28 @@ const Income = ({ data = [], openModal, handleDelete, handleEdit, currency }) =>
                         </h2>
                         <p className={`text-sm mt-1 ml-1 ${theme === 'dark' ? 'text-gray-400' : 'text-[#654321]/70'}`}>Track your earnings</p>
                     </div>
-                    <div className="flex gap-6">
+                    <div className="flex gap-4">
+
+                        {/* THIS MONTH */}
+                        <div className={`text-right px-6 py-3 rounded-xl border transition duration-500 ${theme === 'dark' ? 'bg-black border-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.4)]' : 'bg-[#F5F5DC] border-[#654321]/30 shadow-lg'}`}>
+                            <p className={`text-[10px] uppercase font-bold tracking-widest ${theme === 'dark' ? 'text-emerald-400 drop-shadow-[0_0_5px_rgba(16,185,129,0.8)]' : 'text-[#654321]/70'}`}>This Month</p>
+                            <h3 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white drop-shadow-[0_0_10px_#10b981]' : 'text-[#4B3621]'}`}>
+                                +{currency}{formatIndianNumber(currentMonthIncome)}
+                            </h3>
+                            {monthChange !== null && (
+                                <p className={`text-[10px] font-bold mt-0.5 flex items-center justify-end gap-1 ${parseFloat(monthChange) >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                                    {parseFloat(monthChange) >= 0 ? <ArrowUp size={10} /> : <ArrowDown size={10} />}
+                                    {Math.abs(monthChange)}% vs last month
+                                </p>
+                            )}
+                        </div>
+
+                        {/* TOTAL EARNED */}
                         <div className={`text-right px-6 py-3 rounded-xl border transition duration-500 ${theme === 'dark' ? 'bg-black border-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.4)]' : 'bg-[#F5F5DC] border-[#654321]/30 shadow-lg'}`}>
                             <p className={`text-[10px] uppercase font-bold tracking-widest ${theme === 'dark' ? 'text-emerald-400 drop-shadow-[0_0_5px_rgba(16,185,129,0.8)]' : 'text-[#654321]/70'}`}>Total Earned</p>
                             <h3 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white drop-shadow-[0_0_10px_#10b981]' : 'text-[#4B3621]'}`}>+{currency}{formatIndianNumber(total)}</h3>
                         </div>
+
                         <button
                             onClick={() => openModal('income')}
                             className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold transition-all duration-300 hover:scale-105 border ${theme === 'dark' ? 'bg-emerald-600 text-white shadow-[0_0_20px_#10b981] hover:shadow-[0_0_40px_#10b981] border-emerald-400' : 'bg-[#F5F5DC] text-[#4B3621] border-[#654321]/30 shadow-lg hover:bg-[#F5F5DC]/80'}`}
@@ -243,12 +254,9 @@ const Income = ({ data = [], openModal, handleDelete, handleEdit, currency }) =>
                                     <CalendarIcon size={14} />{dateFilter || "FILTER DATE"}
                                     {dateFilter && (<div onClick={(e) => { e.stopPropagation(); setDateFilter('') }} className={`ml-1 p-0.5 rounded-full ${theme === 'dark' ? 'hover:text-black' : 'hover:text-red-600'}`}><X size={12} /></div>)}
                                 </button>
-
                                 {showCalendar && (
-                                    <div className={`absolute bottom-full right-0 mb-3 z-[100] shadow-2xl rounded-xl border ${theme === 'dark' ? 'border-emerald-500/50 bg-black shadow-[0_0_30px_rgba(16,185,129,0.2)]' : 'bg-[#FFF8F0] border-[#654321]/30 shadow-lg'}`}>
-                                        <div className="max-h-[300px] overflow-y-auto custom-scrollbar p-1">
-                                            <CustomCalendar selectedDate={dateFilter} onSelect={setDateFilter} onClose={() => setShowCalendar(false)} />
-                                        </div>
+                                    <div className={`absolute top-full right-0 mt-2 z-[100] shadow-2xl rounded-xl border ${theme === 'dark' ? 'border-emerald-500/50 bg-black shadow-[0_0_30px_rgba(16,185,129,0.2)]' : 'bg-[#FFF8F0] border-[#654321]/30 shadow-lg'}`}>
+                                        <CustomCalendar selectedDate={dateFilter} onSelect={setDateFilter} onClose={() => setShowCalendar(false)} />
                                     </div>
                                 )}
                             </div>

@@ -3,13 +3,12 @@ import axios from 'axios';
 
 const AuthContext = createContext(null);
 
+axios.defaults.withCredentials = true;
+const API_URL = 'http://localhost:5000';
+
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-
-  // Configure axios to always send cookies
-  axios.defaults.withCredentials = true;
-  const API_URL = 'http://localhost:5000';
 
   useEffect(() => {
     checkAuth();
@@ -29,21 +28,34 @@ export const AuthProvider = ({ children }) => {
   };
 
   const login = async (email, password) => {
-    const { data } = await axios.post(`${API_URL}/api/auth/login`, { email, password });
-    if (data.success) {
-      setUser(data.user);
-      return { success: true };
+    try {
+      const { data } = await axios.post(`${API_URL}/api/auth/login`, { email, password });
+      if (data.success) {
+        setUser(data.user);
+        return { success: true };
+      }
+      return { success: false, error: data.error };
+    } catch (error) {
+      return { 
+        success: false, 
+        error: error.response?.data?.error || 'Login failed' 
+      };
     }
-    return { success: false, error: data.error };
   };
 
   const register = async (name, email, password) => {
-    const { data } = await axios.post(`${API_URL}/api/auth/register`, { name, email, password });
-    if (data.success) {
-      setUser(data.user);
-      return { success: true };
+    try {
+      const { data } = await axios.post(`${API_URL}/api/auth/register`, { name, email, password });
+      if (data.success) {
+        return { success: true };
+      }
+      return { success: false, error: data.error };
+    } catch (error) {
+      return { 
+        success: false, 
+        error: error.response?.data?.error || 'Registration failed' 
+      };
     }
-    return { success: false, error: data.error };
   };
 
   const logout = async () => {
