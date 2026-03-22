@@ -1,4 +1,5 @@
-import { LayoutDashboard, TrendingUp, TrendingDown, PieChart, Briefcase, Target, Download, Sun, Moon } from 'lucide-react'
+import { useState } from 'react'
+import { LayoutDashboard, TrendingUp, TrendingDown, PieChart, Briefcase, Target, Download, Sun, Moon, Menu, X } from 'lucide-react'
 import { Link, useLocation } from 'react-router-dom'
 import { useTheme } from '../context/ThemeContext'
 
@@ -6,7 +7,8 @@ const Sidebar = ({ onExport }) => {
   const { theme, setTheme } = useTheme()
   const location = useLocation()
   const view = location.pathname.slice(1) || 'dashboard'
-  
+  const [mobileOpen, setMobileOpen] = useState(false)
+
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, color: 'text-blue-500' },
     { id: 'income', label: 'Income', icon: TrendingUp, color: 'text-emerald-500' },
@@ -25,22 +27,25 @@ const Sidebar = ({ onExport }) => {
     budget:     "bg-yellow-400/10 text-yellow-400 border-yellow-400/50 shadow-[0_0_20px_rgba(250,204,21,0.5)]"
   }
 
-  // FIX: Removed redundant lightActiveStyles object — simplified to single return
   const getActiveClass = (id) => {
-    if (theme === 'light') {
-      return "bg-[#F5F5DC] text-[#8B4513] border-[#8B4513]/30 shadow-md"
-    }
+    if (theme === 'light') return "bg-[#F5F5DC] text-[#8B4513] border-[#8B4513]/30 shadow-md"
     return darkActiveStyles[id] || "bg-white/10 text-white"
   }
 
-  return (
-    <div className={`w-64 border-r flex flex-col shrink-0 transition-all duration-300 relative z-20 ${theme === 'dark' ? 'bg-black border-blue-900/30 shadow-[5px_0_30px_rgba(0,0,0,0.8)]' : 'bg-[#FFF8F0] border-[#8B4513]/20 shadow-lg'}`}>
-      
+  const sidebarContent = (
+    <>
       {/* LOGO AREA */}
-      <div className="h-20 flex items-center px-6 border-b border-white/5 relative overflow-hidden group">
+      <div className="h-20 flex items-center px-6 border-b border-white/5 relative overflow-hidden shrink-0">
         {theme === 'dark' && <div className="absolute top-0 left-0 w-1 h-full bg-blue-600 shadow-[0_0_15px_#3b82f6]"></div>}
         {theme === 'light' && <div className="absolute top-0 left-0 w-1 h-full bg-[#8B4513]"></div>}
         <h1 className={`font-black text-3xl tracking-wider ${theme === 'dark' ? 'text-blue-500 drop-shadow-[0_0_10px_#3b82f6]' : 'text-[#8B4513]'}`}>SFM</h1>
+        {/* FIX: X button always rendered on mobile, closes sidebar */}
+        <button
+          onClick={() => setMobileOpen(false)}
+          className={`ml-auto md:hidden p-1.5 rounded-lg transition ${theme === 'dark' ? 'text-gray-400 hover:text-white hover:bg-white/10' : 'text-[#8B4513] hover:bg-[#F5F5DC]'}`}
+        >
+          <X size={22} />
+        </button>
       </div>
 
       {/* NAVIGATION MENU */}
@@ -50,19 +55,19 @@ const Sidebar = ({ onExport }) => {
         {menuItems.map((item) => {
           const Icon = item.icon
           const isActive = view === item.id
-          
           return (
-            <Link 
+            <Link
               key={item.id}
               to={`/${item.id}`}
+              onClick={() => setMobileOpen(false)}
               className={`
                 w-full flex items-center gap-4 px-4 py-3.5 rounded-xl transition-all duration-300 group border border-transparent
                 ${isActive ? getActiveClass(item.id) : (theme === 'dark' ? 'text-gray-400 hover:bg-white/5 hover:text-white' : 'text-[#8B4513]/70 hover:bg-[#F5F5DC]/50 hover:text-[#8B4513]')}
               `}
             >
-              <Icon 
-                size={20} 
-                className={`transition-all duration-300 ${isActive ? (theme === 'dark' ? 'scale-110 drop-shadow-[0_0_5px_currentColor]' : 'scale-110') : `${item.color} opacity-70 group-hover:opacity-100`}`} 
+              <Icon
+                size={20}
+                className={`transition-all duration-300 ${isActive ? (theme === 'dark' ? 'scale-110 drop-shadow-[0_0_5px_currentColor]' : 'scale-110') : `${item.color} opacity-70 group-hover:opacity-100`}`}
               />
               <span className="font-bold text-sm tracking-wide">{item.label}</span>
             </Link>
@@ -80,8 +85,8 @@ const Sidebar = ({ onExport }) => {
       </div>
 
       {/* FOOTER (Theme Toggle) */}
-      <div className={`p-4 border-t ${theme === 'dark' ? 'bg-black border-white/5' : 'bg-[#FFF8F0] border-[#8B4513]/10'}`}>
-        <button 
+      <div className={`p-4 border-t shrink-0 ${theme === 'dark' ? 'bg-black border-white/5' : 'bg-[#FFF8F0] border-[#8B4513]/10'}`}>
+        <button
           onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
           className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border transition group ${theme === 'dark' ? 'bg-white/5 hover:bg-white/10 border-white/5' : 'bg-[#F5F5DC] hover:bg-[#F5F5DC]/70 border-[#8B4513]/20'}`}
         >
@@ -94,7 +99,43 @@ const Sidebar = ({ onExport }) => {
           </div>
         </button>
       </div>
-    </div>
+    </>
+  )
+
+  return (
+    <>
+      {/* FIX: Hamburger hidden when sidebar is open */}
+      {!mobileOpen && (
+        <button
+          onClick={() => setMobileOpen(true)}
+          className={`md:hidden fixed top-4 left-4 z-50 p-2 rounded-xl border shadow-lg ${
+            theme === 'dark'
+              ? 'bg-black border-blue-500/30 text-blue-400'
+              : 'bg-[#FFF8F0] border-[#8B4513]/20 text-[#8B4513]'
+          }`}
+        >
+          <Menu size={22} />
+        </button>
+      )}
+
+      {/* OVERLAY */}
+      {mobileOpen && (
+        <div
+          className="md:hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-30"
+          onClick={() => setMobileOpen(false)}
+        />
+      )}
+
+      {/* SIDEBAR */}
+      <div className={`
+        fixed md:relative z-40 h-full flex flex-col shrink-0
+        w-64 border-r transition-all duration-300
+        ${theme === 'dark' ? 'bg-black border-blue-900/30 shadow-[5px_0_30px_rgba(0,0,0,0.8)]' : 'bg-[#FFF8F0] border-[#8B4513]/20 shadow-lg'}
+        ${mobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
+      `}>
+        {sidebarContent}
+      </div>
+    </>
   )
 }
 

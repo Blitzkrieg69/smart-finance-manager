@@ -1,31 +1,24 @@
 import { useState, useEffect } from 'react'
 import {
-  TrendingUp,
-  TrendingDown,
-  Wallet,
-  AlertCircle,
-  CheckCircle,
-  Info,
-  AlertTriangle,
-  Activity,
-  ArrowUpRight,
-  ArrowDownRight,
-  Zap,
-  ChevronDown,
-  ChevronUp
+  TrendingUp, TrendingDown, Wallet, AlertCircle, CheckCircle,
+  Info, AlertTriangle, Activity, ArrowUpRight, ArrowDownRight,
+  Zap, ChevronDown, ChevronUp
 } from 'lucide-react'
 import { useTheme } from '../context/ThemeContext'
 import { formatIndianNumber } from '../utils/formatNumber'
 import { LineChart, Line, CartesianGrid, Tooltip, ResponsiveContainer, XAxis, YAxis } from 'recharts'
 import ScoreInfoModal from '../components/modals/ScoreInfoModal'
 
+// FIX 1: API_URL constant instead of hardcoded localhost
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
+
 const Dashboard = ({ transactions, budgets, openModal, currency }) => {
   const { theme, styles } = useTheme()
 
   const [healthScore, setHealthScore] = useState(null)
   const [insights, setInsights] = useState([])
-  const [allInsights, setAllInsights] = useState([])       // ✅ NEW — all insights
-  const [showAllInsights, setShowAllInsights] = useState(false) // ✅ NEW — toggle
+  const [allInsights, setAllInsights] = useState([])
+  const [showAllInsights, setShowAllInsights] = useState(false)
   const [cashflow, setCashflow] = useState(null)
   const [budgetIntelligence, setBudgetIntelligence] = useState(null)
   const [patterns, setPatterns] = useState(null)
@@ -42,19 +35,20 @@ const Dashboard = ({ transactions, budgets, openModal, currency }) => {
     const fetchAnalytics = async () => {
       try {
         setLoading(true)
+        // FIX 1: Use API_URL constant
         const [healthRes, insightsRes, cashflowRes, budgetRes, patternsRes] = await Promise.all([
-          fetch('http://localhost:5000/api/analytics/health-score', { credentials: 'include' }).catch(() => ({ ok: false })),
-          fetch('http://localhost:5000/api/analytics/insights', { credentials: 'include' }).catch(() => ({ ok: false })),
-          fetch('http://localhost:5000/api/predictions/cashflow', { credentials: 'include' }).catch(() => ({ ok: false })),
-          fetch('http://localhost:5000/api/predictions/budget-burnrate', { credentials: 'include' }).catch(() => ({ ok: false })),
-          fetch('http://localhost:5000/api/analytics/patterns', { credentials: 'include' }).catch(() => ({ ok: false }))
+          fetch(`${API_URL}/analytics/health-score`, { credentials: 'include' }).catch(() => ({ ok: false })),
+          fetch(`${API_URL}/analytics/insights`, { credentials: 'include' }).catch(() => ({ ok: false })),
+          fetch(`${API_URL}/predictions/cashflow`, { credentials: 'include' }).catch(() => ({ ok: false })),
+          fetch(`${API_URL}/predictions/budget-burnrate`, { credentials: 'include' }).catch(() => ({ ok: false })),
+          fetch(`${API_URL}/analytics/patterns`, { credentials: 'include' }).catch(() => ({ ok: false }))
         ])
 
         if (healthRes.ok) setHealthScore(await healthRes.json())
         if (insightsRes.ok) {
           const data = await insightsRes.json()
-          setInsights(data.insights || [])           
-          setAllInsights(data.allInsights || [])     
+          setInsights(data.insights || [])
+          setAllInsights(data.allInsights || [])
         }
         if (cashflowRes.ok) setCashflow(await cashflowRes.json())
         if (budgetRes.ok) setBudgetIntelligence(await budgetRes.json())
@@ -131,7 +125,8 @@ const Dashboard = ({ transactions, budgets, openModal, currency }) => {
   }
 
   return (
-    <div className={`flex flex-col gap-6 h-full w-full p-6 overflow-y-auto custom-scrollbar ${styles.bg}`}>
+    // FIX 2: pt-20 md:pt-6 — adds top space on mobile for hamburger button
+    <div className={`flex flex-col gap-6 h-full w-full p-6 pt-20 md:pt-6 overflow-y-auto custom-scrollbar ${styles.bg}`}>
 
       {/* 1. BALANCE, INCOME, EXPENSE */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -215,7 +210,6 @@ const Dashboard = ({ transactions, budgets, openModal, currency }) => {
                       ? 'text-gray-500 hover:text-purple-400 hover:bg-purple-500/10'
                       : 'text-[#654321]/50 hover:text-[#4B3621] hover:bg-[#F5F5DC]'
                   }`}
-                  title="How is this score calculated?"
                 >
                   <Info size={18} />
                 </button>
@@ -233,7 +227,8 @@ const Dashboard = ({ transactions, budgets, openModal, currency }) => {
               </div>
 
               <div className={`mt-4 p-4 rounded-xl ${theme === 'dark' ? 'bg-white/5' : 'bg-[#F5F5DC]'}`}>
-                <div className="grid grid-cols-3 gap-4 text-center">
+                {/* FIX 3: grid-cols-1 sm:grid-cols-3 — stacks on very small screens */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center">
                   <div>
                     <p className={`text-xs mb-1 ${theme === 'dark' ? 'text-gray-400' : 'text-[#654321]/70'}`}>Savings Rate</p>
                     <p className={`text-lg font-black ${theme === 'dark' ? 'text-emerald-400' : 'text-[#4B3621]'}`}>{healthScore.metrics.savingsRate}%</p>
@@ -270,8 +265,6 @@ const Dashboard = ({ transactions, budgets, openModal, currency }) => {
       {/* 3. SMART INSIGHTS */}
       {insights.length > 0 ? (
         <div className={getCardStyle('blue')}>
-
-          {/* ✅ Fix 5 — Header with count + Show All toggle */}
           <div className="flex items-center justify-between mb-4">
             <h3 className={`font-bold text-lg flex items-center gap-2 ${theme === 'dark' ? 'text-white' : 'text-[#4B3621]'}`}>
               <Zap size={20} />
@@ -282,8 +275,6 @@ const Dashboard = ({ transactions, budgets, openModal, currency }) => {
                 {allInsights.length > 0 ? allInsights.length : insights.length} found
               </span>
             </h3>
-
-            {/* Only show toggle if there are more than 6 insights */}
             {allInsights.length > 6 && (
               <button
                 onClick={() => setShowAllInsights(prev => !prev)}
@@ -293,22 +284,13 @@ const Dashboard = ({ transactions, budgets, openModal, currency }) => {
                     : 'text-[#654321] hover:bg-[#F5F5DC] border border-[#654321]/30'
                 }`}
               >
-                {showAllInsights ? (
-                  <><ChevronUp size={14} /> Show Less</>
-                ) : (
-                  <><ChevronDown size={14} /> Show All {allInsights.length}</>
-                )}
+                {showAllInsights ? <><ChevronUp size={14} /> Show Less</> : <><ChevronDown size={14} /> Show All {allInsights.length}</>}
               </button>
             )}
           </div>
-
-          {/* Color-coded left border cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
             {displayedInsights.map((insight, i) => (
-              <div
-                key={i}
-                className={`p-4 rounded-xl border transition-all ${getInsightBorderStyle(insight.type)}`}
-              >
+              <div key={i} className={`p-4 rounded-xl border transition-all ${getInsightBorderStyle(insight.type)}`}>
                 <div className="flex items-start gap-3">
                   {getInsightIcon(insight.type)}
                   <p className={`text-sm font-medium leading-relaxed ${theme === 'dark' ? 'text-gray-300' : 'text-[#4B3621]'}`}>
@@ -328,7 +310,6 @@ const Dashboard = ({ transactions, budgets, openModal, currency }) => {
             <Activity size={20} />
             CASH FLOW FORECAST
           </h3>
-
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
             <div className={`p-5 rounded-xl ${theme === 'dark' ? 'bg-white/5 border border-white/10' : 'bg-[#F5F5DC] border border-[#654321]/20'}`}>
               <p className={`text-xs font-bold uppercase mb-2 ${theme === 'dark' ? 'text-gray-400' : 'text-[#654321]/70'}`}>Month-End Prediction</p>
@@ -349,7 +330,6 @@ const Dashboard = ({ transactions, budgets, openModal, currency }) => {
               </p>
             </div>
           </div>
-
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={cashflow.timeline}>
@@ -377,7 +357,6 @@ const Dashboard = ({ transactions, budgets, openModal, currency }) => {
 
       {/* 5. BUDGET INTELLIGENCE & SPENDING PATTERNS */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-
         {budgetIntelligence && budgetIntelligence.budgets && budgetIntelligence.budgets.length > 0 ? (
           <div className={getCardStyle('blue')}>
             <h3 className={`font-bold text-lg mb-4 ${theme === 'dark' ? 'text-white' : 'text-[#4B3621]'}`}>BUDGET INTELLIGENCE</h3>
@@ -511,8 +490,10 @@ const Dashboard = ({ transactions, budgets, openModal, currency }) => {
                   </div>
                   <div>
                     <p className={`text-sm font-bold ${theme === 'dark' ? 'text-white' : 'text-[#4B3621]'}`}>{t.category}</p>
+                    {/* FIX 3: Hide description on mobile to save space */}
                     <p className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-[#654321]/60'}`}>
-                      {t.description || 'No description'} • {new Date(t.date).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' })}
+                      <span className="hidden sm:inline">{t.description || 'No description'} • </span>
+                      {new Date(t.date).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' })}
                     </p>
                   </div>
                 </div>
@@ -527,7 +508,6 @@ const Dashboard = ({ transactions, budgets, openModal, currency }) => {
             ))}
         </div>
       </div>
-
     </div>
   )
 }

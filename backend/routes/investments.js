@@ -31,7 +31,7 @@ router.get('/', requireAuth, async (req, res) => {
     try {
         const userId = req.session.userId;
         const investments = await Investment.find({ userId });
-        res.json({ investments, rate: USD_TO_INR_RATE }); // ✅ FIX #2
+        res.json({ investments, rate: USD_TO_INR_RATE });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }

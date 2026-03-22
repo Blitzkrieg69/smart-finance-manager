@@ -56,7 +56,7 @@ export default function DashboardLayout({ notifications = [], onExport }) {
 
         {/* HEADER */}
         <header
-          className={`h-16 border-b flex justify-between items-center px-8 shrink-0 ${
+          className={`h-16 border-b flex justify-between items-center pl-14 pr-6 md:px-8 shrink-0 ${
             theme === 'dark'
               ? 'border-white/5 bg-[#0b0c15]'
               : 'border-[#654321]/10 bg-[#FFF8F0]'
@@ -109,8 +109,8 @@ export default function DashboardLayout({ notifications = [], onExport }) {
                 )}
               </button>
 
-              {showNotifications && (
-                <div className={`absolute right-0 top-12 w-96 rounded-2xl shadow-2xl p-4 z-50 border animate-fade-in ${
+              {showNotifications && ( 
+                <div className={`absolute right-0 top-12 w-80 sm:w-96 rounded-2xl shadow-2xl p-4 z-50 border animate-fade-in ${
                   theme === 'dark'
                     ? 'bg-[#09090b]/95 backdrop-blur-xl border-white/10'
                     : 'bg-white border-[#654321]/20 shadow-lg'
