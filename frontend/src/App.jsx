@@ -26,7 +26,7 @@ function AuthenticatedApp() {
   const [transactions, setTransactions] = useState([]);
   const [budgets, setBudgets] = useState([]);
   const [investments, setInvestments] = useState([]);
-  const [exchangeRate, setExchangeRate] = useState(91.5);
+  const [exchangeRate, setExchangeRate] = useState(94);
   const currency = '₹';
 
   const [isModalOpen, setIsModalOpen] = useState(false);

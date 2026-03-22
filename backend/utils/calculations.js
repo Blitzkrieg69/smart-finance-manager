@@ -245,7 +245,7 @@ const calculateGoalScore = (goals) => {
 
 
 // Calculate Investment ROI Score (15 points max) - WITH CURRENCY CONVERSION
-const calculateInvestmentROI = (investments, exchangeRate = 91.5) => {
+const calculateInvestmentROI = (investments, exchangeRate = 94) => {
     if (investments.length === 0) return { score: 0, roi: 0 };
     
     // Helper: Convert to INR
@@ -344,7 +344,7 @@ const calculateInvestmentDiversification = (investments) => {
 
 
 // Calculate Complete Investment Score (25 points max) - WITH CURRENCY CONVERSION
-const calculateInvestmentScore = (investments, exchangeRate = 91.5) => {
+const calculateInvestmentScore = (investments, exchangeRate = 94) => {
     if (investments.length === 0) {
         return {
             score: 0,

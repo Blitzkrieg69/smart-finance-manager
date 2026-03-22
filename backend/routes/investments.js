@@ -7,7 +7,7 @@ const { validateInvestment } = require('../middleware/validation');
 
 const market = require('../market');
 
-const USD_TO_INR_RATE = 91.5;
+const USD_TO_INR_RATE = 94;
 
 // SEARCH (Public/Authenticated)
 router.get('/search', async (req, res) => {
